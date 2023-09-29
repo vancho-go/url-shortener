@@ -1,3 +1,3 @@
 package storage
 
-var DbInstance = make(map[string]string)
+var DBInstance = make(map[string]string)
