@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-var dbInstance = storage.DbInstance
+var dbInstance = storage.DBInstance
 
 func MainPage(addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
