@@ -7,7 +7,6 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
-	url2 "net/url"
 )
 
 var dbInstance = storage.DBInstance
@@ -38,7 +37,8 @@ func EncodeURL(addr string) http.HandlerFunc {
 		id := base62.Base62Encode(rand.Uint64())
 		dbInstance[id] = string(originalURL)
 		res.WriteHeader(http.StatusCreated)
-		shortenURL, err := url2.JoinPath("http://", addr, id)
+		//shortenURL, err := url2.JoinPath(addr, id)
+		shortenURL := addr + "/" + id
 		if err != nil {
 			res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			http.Error(res, err.Error(), http.StatusBadRequest)
