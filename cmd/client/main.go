@@ -2,7 +2,9 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
+	"github.com/vancho-go/url-shortener/internal/app/config"
 	"io"
 	"net/http"
 	"net/url"
@@ -11,7 +13,7 @@ import (
 )
 
 func main() {
-	endpoint := "http://localhost:8080/"
+	config.ParseClientFlags()
 	// контейнер данных для запроса
 	data := url.Values{}
 	// приглашение в консоли
@@ -31,7 +33,7 @@ func main() {
 	// пишем запрос
 	// запрос методом POST должен, помимо заголовков, содержать тело
 	// тело должно быть источником потокового чтения io.Reader
-	request, err := http.NewRequest(http.MethodPost, endpoint, strings.NewReader(data.Encode()))
+	request, err := http.NewRequest(http.MethodPost, config.Configuration.ClientHost, strings.NewReader(data.Encode()))
 	if err != nil {
 		panic(err)
 	}
@@ -48,7 +50,7 @@ func main() {
 	// читаем поток из тела ответа
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		panic(err)
+		panic(errors.New("error reading body"))
 	}
 	// и печатаем его
 	fmt.Println(string(body))

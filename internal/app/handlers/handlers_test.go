@@ -12,8 +12,6 @@ import (
 
 const addr = "localhost:8080"
 
-var shortenURL string
-
 func TestEncodeURL(t *testing.T) {
 	type want struct {
 		code        int
@@ -44,13 +42,10 @@ func TestEncodeURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.name == "Test GET: existingURL" {
-				tt.target = shortenURL
-			}
 			request := httptest.NewRequest(tt.method, tt.target, strings.NewReader(tt.reqBody))
 			w := httptest.NewRecorder()
-			hF := EncodeURL(addr)
-			hF(w, request)
+			handlerFunc := EncodeURL(addr)
+			handlerFunc(w, request)
 
 			res := w.Result()
 			assert.Equal(t, tt.want.code, res.StatusCode)
@@ -60,10 +55,7 @@ func TestEncodeURL(t *testing.T) {
 			require.NoError(t, err)
 
 			if res.StatusCode == 201 && string(resBody) != "" {
-				lastIndex := strings.LastIndex(string(resBody), "/")
-				shortenURL = string(resBody)[lastIndex:]
 				assert.Equal(t, tt.want.contentType, res.Header.Get("Content-Type"))
-
 			} else {
 				assert.Equal(t, tt.want.contentType, res.Header.Get("Content-Type"))
 				assert.Equal(t, tt.want.response, string(resBody))
@@ -85,11 +77,6 @@ func TestDecodeURL(t *testing.T) {
 		target  string
 		want    want
 	}{
-		//{
-		//	name:   "Test GET: existingURL",
-		//	method: http.MethodGet, reqBody: "",
-		//	want: want{code: 307, contentType: ""},
-		//},
 		{
 			name:   "Test GET: non-existingURL",
 			method: http.MethodGet, reqBody: "https://practicum.yandex.ru",
@@ -100,9 +87,6 @@ func TestDecodeURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.name == "Test GET: existingURL" {
-				tt.target = shortenURL
-			}
 			request := httptest.NewRequest(tt.method, tt.target, strings.NewReader(tt.reqBody))
 			w := httptest.NewRecorder()
 			DecodeURL(w, request)

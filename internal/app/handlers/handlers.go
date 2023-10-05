@@ -5,28 +5,30 @@ import (
 	"github.com/vancho-go/url-shortener/internal/app/base62"
 	"github.com/vancho-go/url-shortener/internal/app/storage"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 )
 
-var dbInstance = storage.DBInstance
+var dbInstance = make(storage.DBInstance)
 
 func DecodeURL(res http.ResponseWriter, req *http.Request) {
 	shortenURL := chi.URLParam(req, "shortenURL")
-	if originalURL, ok := dbInstance[shortenURL]; !ok {
+	originalURL, err := dbInstance.GetURL(shortenURL)
+	if err != nil {
 		http.Error(res, "No such shorten URL", http.StatusBadRequest)
 		return
-	} else {
-		res.Header().Set("Location", originalURL)
-		res.WriteHeader(http.StatusTemporaryRedirect)
 	}
+	res.Header().Set("Location", originalURL)
+	res.WriteHeader(http.StatusTemporaryRedirect)
+
 }
 
 func EncodeURL(addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		originalURL, err := io.ReadAll(req.Body)
 		if err != nil {
-			http.Error(res, err.Error(), http.StatusBadRequest)
+			http.Error(res, "Error reading body", http.StatusBadRequest)
 			return
 		}
 		if string(originalURL) == "" {
@@ -34,10 +36,17 @@ func EncodeURL(addr string) http.HandlerFunc {
 			http.Error(res, "URL parameter is missing", http.StatusBadRequest)
 			return
 		}
-		id := base62.Base62Encode(rand.Uint64())
-		dbInstance[id] = string(originalURL)
+
+		shortenURL := base62.Base62Encode(rand.Uint64())
+		err = dbInstance.AddURL(string(originalURL), shortenURL)
+		if err != nil {
+			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
+			return
+		}
 		res.WriteHeader(http.StatusCreated)
-		shortenURL := addr + "/" + id
-		_, _ = res.Write([]byte(shortenURL))
+		_, err = res.Write([]byte(addr + "/" + shortenURL))
+		if err != nil {
+			log.Printf("Write failed: %v", err)
+		}
 	}
 }
