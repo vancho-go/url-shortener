@@ -10,7 +10,12 @@ import (
 	"net/http"
 )
 
-var dbInstance = make(storage.DBInstance)
+var dbInstance = make(storage.MapDBInstance)
+
+type Storage interface {
+	AddURL(string, string) error
+	GetURL(string) (string, error)
+}
 
 func DecodeURL(res http.ResponseWriter, req *http.Request) {
 	shortenURL := chi.URLParam(req, "shortenURL")
@@ -28,7 +33,7 @@ func EncodeURL(addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		originalURL, err := io.ReadAll(req.Body)
 		if err != nil {
-			http.Error(res, "Error reading body", http.StatusBadRequest)
+			http.Error(res, "No such shorten URL", http.StatusBadRequest)
 			return
 		}
 		if string(originalURL) == "" {
