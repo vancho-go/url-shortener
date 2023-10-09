@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vancho-go/url-shortener/internal/app/storage"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,8 @@ import (
 )
 
 const addr = "localhost:8080"
+
+var dbInstance = make(storage.MapDB)
 
 func TestEncodeURL(t *testing.T) {
 	type want struct {
@@ -44,7 +47,7 @@ func TestEncodeURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.method, tt.target, strings.NewReader(tt.reqBody))
 			w := httptest.NewRecorder()
-			handlerFunc := EncodeURL(addr)
+			handlerFunc := EncodeURL(dbInstance, addr)
 			handlerFunc(w, request)
 
 			res := w.Result()
@@ -89,7 +92,8 @@ func TestDecodeURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.method, tt.target, strings.NewReader(tt.reqBody))
 			w := httptest.NewRecorder()
-			DecodeURL(w, request)
+			handlerFunc := DecodeURL(dbInstance)
+			handlerFunc(w, request)
 
 			res := w.Result()
 			assert.Equal(t, tt.want.code, res.StatusCode)

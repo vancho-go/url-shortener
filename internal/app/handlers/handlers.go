@@ -3,33 +3,34 @@ package handlers
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/vancho-go/url-shortener/internal/app/base62"
-	"github.com/vancho-go/url-shortener/internal/app/storage"
 	"io"
 	"log"
 	"math/rand"
 	"net/http"
 )
 
-var dbInstance = make(storage.MapDBInstance)
+//var dbInstance = make(storage.MapDB)
 
 type Storage interface {
 	AddURL(string, string) error
 	GetURL(string) (string, error)
 }
 
-func DecodeURL(res http.ResponseWriter, req *http.Request) {
-	shortenURL := chi.URLParam(req, "shortenURL")
-	originalURL, err := dbInstance.GetURL(shortenURL)
-	if err != nil {
-		http.Error(res, "No such shorten URL", http.StatusBadRequest)
-		return
-	}
-	res.Header().Set("Location", originalURL)
-	res.WriteHeader(http.StatusTemporaryRedirect)
+func DecodeURL(db Storage) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		shortenURL := chi.URLParam(req, "shortenURL")
+		originalURL, err := db.GetURL(shortenURL)
+		if err != nil {
+			http.Error(res, "No such shorten URL", http.StatusBadRequest)
+			return
+		}
+		res.Header().Set("Location", originalURL)
+		res.WriteHeader(http.StatusTemporaryRedirect)
 
+	}
 }
 
-func EncodeURL(addr string) http.HandlerFunc {
+func EncodeURL(db Storage, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		originalURL, err := io.ReadAll(req.Body)
 		if err != nil {
@@ -43,7 +44,7 @@ func EncodeURL(addr string) http.HandlerFunc {
 		}
 
 		shortenURL := base62.Base62Encode(rand.Uint64())
-		err = dbInstance.AddURL(string(originalURL), shortenURL)
+		err = db.AddURL(string(originalURL), shortenURL)
 		if err != nil {
 			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
 			return
