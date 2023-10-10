@@ -12,13 +12,16 @@ import (
 var dbInstance = make(storage.MapDB)
 
 func main() {
-	config.ParseServerFlags()
+	config, err := config.ParseServer()
+	if err != nil {
+		panic(errors.New("error parsing server config"))
+	}
 
 	r := chi.NewRouter()
 	r.Get("/{shortenURL}", handlers.DecodeURL(dbInstance))
-	r.Post("/", handlers.EncodeURL(dbInstance, config.Configuration.BaseHost))
+	r.Post("/", handlers.EncodeURL(dbInstance, config.BaseHost))
 
-	err := http.ListenAndServe(config.Configuration.ServerHost, r)
+	err = http.ListenAndServe(config.ServerHost, r)
 	if err != nil {
 		panic(errors.New("error starting server"))
 	}

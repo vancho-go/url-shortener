@@ -13,7 +13,10 @@ import (
 )
 
 func main() {
-	config.ParseClientFlags()
+	config, err := config.ParseClient()
+	if err != nil {
+		panic(errors.New("error parsing client config"))
+	}
 	// контейнер данных для запроса
 	data := url.Values{}
 	// приглашение в консоли
@@ -33,7 +36,7 @@ func main() {
 	// пишем запрос
 	// запрос методом POST должен, помимо заголовков, содержать тело
 	// тело должно быть источником потокового чтения io.Reader
-	request, err := http.NewRequest(http.MethodPost, config.Configuration.ClientHost, strings.NewReader(data.Encode()))
+	request, err := http.NewRequest(http.MethodPost, config.ClientHost, strings.NewReader(data.Encode()))
 	if err != nil {
 		panic(err)
 	}
