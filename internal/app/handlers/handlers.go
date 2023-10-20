@@ -9,8 +9,6 @@ import (
 	"net/http"
 )
 
-//var dbInstance = make(storage.MapDB)
-
 type Storage interface {
 	AddURL(string, string) error
 	GetURL(string) (string, error)
