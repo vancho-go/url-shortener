@@ -31,6 +31,7 @@ func main() {
 	r := chi.NewRouter()
 	r.Get("/{shortenURL}", logger.RequestLogger(handlers.DecodeURL(dbInstance)))
 	r.Post("/", logger.RequestLogger(handlers.EncodeURL(dbInstance, config.BaseHost)))
+	r.Post("/api/shorten", logger.RequestLogger(handlers.EncodeURLJSON(dbInstance, config.BaseHost)))
 
 	err = http.ListenAndServe(config.ServerHost, r)
 	if err != nil {
