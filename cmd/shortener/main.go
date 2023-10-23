@@ -29,7 +29,7 @@ func main() {
 	}
 
 	logger.Log.Info("Configuring http compress middleware")
-	compressMiddleware := compress.GzipMiddleware
+	compressMiddleware := compress.GzipMiddlewareTest
 
 	logger.Log.Info("Running server", zap.String("address", config.ServerHost))
 	r := chi.NewRouter()
