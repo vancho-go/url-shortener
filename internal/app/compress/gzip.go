@@ -66,13 +66,6 @@ func GzipMiddleware(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		originalWriter := w
 
-		// проверяем, что content-type, который нам нужен
-		//contentType := r.Header.Get("Content-Type")
-		//if contentType != "application/json" && contentType != "text/html" {
-		//	h.ServeHTTP(originalWriter, r)
-		//	return
-		//}
-
 		// проверяем, что клиент умеет принимать gzip
 		acceptEncoding := r.Header.Get("Accept-Encoding")
 		supportsGzip := strings.Contains(acceptEncoding, "gzip")
