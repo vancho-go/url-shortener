@@ -39,7 +39,6 @@ func EncodeURL(db Storage, addr string) http.HandlerFunc {
 			return
 		}
 		if string(originalURL) == "" {
-			//res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			http.Error(res, "URL parameter is missing", http.StatusBadRequest)
 			return
 		}
