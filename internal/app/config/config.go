@@ -6,8 +6,9 @@ import (
 )
 
 type ServerConfig struct {
-	ServerHost string
-	BaseHost   string
+	ServerHost  string
+	BaseHost    string
+	FileStorage string
 }
 
 type serverConfigBuilder struct {
@@ -24,12 +25,20 @@ func (b *serverConfigBuilder) WithBaseHost(baseHost string) *serverConfigBuilder
 	return b
 }
 
+func (b *serverConfigBuilder) WithFileStorage(fileStorage string) *serverConfigBuilder {
+	b.config.FileStorage = fileStorage
+	return b
+}
+
 func ParseServer() (ServerConfig, error) {
 	var serverHost string
 	flag.StringVar(&serverHost, "a", "localhost:8080", "address and port to run server")
 
 	var baseHost string
 	flag.StringVar(&baseHost, "b", "http://localhost:8080", "address and port for shorten URLs")
+
+	var fileStorage string
+	flag.StringVar(&fileStorage, "f", "/tmp/short-url-db.json", "absolute path for file storage")
 
 	flag.Parse()
 
@@ -38,10 +47,14 @@ func ParseServer() (ServerConfig, error) {
 		baseHost = envBaseAddr
 	}
 
+	if envFileStorage := os.Getenv("FILE_STORAGE_PATH"); envFileStorage != "" {
+		fileStorage = envFileStorage
+	}
+
 	var builder serverConfigBuilder
 
 	builder.WithServerHost(serverHost).
-		WithBaseHost(baseHost)
+		WithBaseHost(baseHost).WithFileStorage(fileStorage)
 
 	return builder.config, nil
 }
