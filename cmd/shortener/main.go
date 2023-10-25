@@ -27,7 +27,7 @@ func main() {
 	}
 
 	logger.Log.Info("Initializing storage")
-	dbInstance, err := storage.NewEncoderDecoder("/tmp/short-url-db.json")
+	dbInstance, err := storage.NewEncoderDecoder(configuration.FileStorage)
 	if err != nil {
 		panic(errors.New("error in storage constructor"))
 	}
