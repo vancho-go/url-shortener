@@ -15,6 +15,7 @@ import (
 type Storage interface {
 	AddURL(string, string) error
 	GetURL(string) (string, error)
+	IsShortenUnique(string) bool
 }
 
 func DecodeURL(db Storage) http.HandlerFunc {
@@ -44,6 +45,10 @@ func EncodeURL(db Storage, addr string) http.HandlerFunc {
 		}
 
 		shortenURL := base62.Base62Encode(rand.Uint64())
+		for !db.IsShortenUnique(shortenURL) {
+			shortenURL = base62.Base62Encode(rand.Uint64())
+		}
+
 		err = db.AddURL(string(originalURL), shortenURL)
 		if err != nil {
 			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
@@ -67,12 +72,14 @@ func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 			return
 		}
 
-		shortenURL := base62.Base62Encode(rand.Uint64())
 		originalURL := request.URL
 		if originalURL == "" {
 			http.Error(res, "URL parameter is missing", http.StatusBadRequest)
 			return
 		}
+
+		shortenURL := base62.Base62Encode(rand.Uint64())
+
 		err := db.AddURL(string(originalURL), shortenURL)
 		if err != nil {
 			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
@@ -87,7 +94,7 @@ func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 		res.WriteHeader(http.StatusCreated)
 		enc := json.NewEncoder(res)
 		if err := enc.Encode(response); err != nil {
-			logger.Log.Debug("error encoding response", zap.Error(err))
+			logger.Log.Error("error encoding response", zap.Error(err))
 			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
 			return
 		}
