@@ -19,8 +19,5 @@ func (storage MapDB) GetURL(shortenURL string) (string, error) {
 
 func (storage MapDB) IsShortenUnique(shortenURL string) bool {
 	_, ok := storage[shortenURL]
-	if !ok {
-		return true
-	}
-	return false
+	return !ok
 }

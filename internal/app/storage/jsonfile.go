@@ -71,8 +71,5 @@ func (ed *EncoderDecoder) GetURL(shortenURL string) (string, error) {
 
 func (ed *EncoderDecoder) IsShortenUnique(shortenURL string) bool {
 	_, ok := ed.storage[shortenURL]
-	if !ok {
-		return true
-	}
-	return false
+	return !ok
 }
