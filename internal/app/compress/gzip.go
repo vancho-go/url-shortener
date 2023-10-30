@@ -34,7 +34,8 @@ func (g *gzipWriter) Close() error {
 func newGzipWriter(w http.ResponseWriter) *gzipWriter {
 	return &gzipWriter{
 		w:          w,
-		gzipWriter: gzip.NewWriter(w)}
+		gzipWriter: gzip.NewWriter(w),
+	}
 }
 
 type gzipReader struct {

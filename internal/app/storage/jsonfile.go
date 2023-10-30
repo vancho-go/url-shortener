@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"sync"
 )
 
 type Data struct {
@@ -16,6 +17,7 @@ type EncoderDecoder struct {
 	storage map[string]string
 	encoder *json.Encoder
 	decoder *json.Decoder
+	mu      sync.Mutex
 }
 
 func NewEncoderDecoder(filename string) (*EncoderDecoder, error) {
@@ -51,14 +53,26 @@ func (ed *EncoderDecoder) Close() error {
 
 func (ed *EncoderDecoder) AddURL(originalURL, shortenURL string) error {
 	data := &Data{ShortURL: shortenURL, OriginalURL: originalURL}
+	ed.mu.Lock()
 	ed.storage[shortenURL] = originalURL
+	defer ed.mu.Unlock()
 	return ed.encoder.Encode(&data)
 }
 
 func (ed *EncoderDecoder) GetURL(shortenURL string) (string, error) {
+	ed.mu.Lock()
 	originalURL, ok := ed.storage[shortenURL]
+	defer ed.mu.Unlock()
 	if !ok {
 		return "", errors.New("no such shorten URL")
 	}
 	return originalURL, nil
+}
+
+func (ed *EncoderDecoder) IsShortenUnique(shortenURL string) bool {
+	_, ok := ed.storage[shortenURL]
+	if !ok {
+		return true
+	}
+	return false
 }

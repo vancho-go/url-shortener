@@ -42,8 +42,11 @@ func ParseServer() (ServerConfig, error) {
 
 	flag.Parse()
 
-	if envRunAddr, envBaseAddr := os.Getenv("SERVER_ADDRESS"), os.Getenv("BASE_URL"); envRunAddr != "" && envBaseAddr != "" {
+	if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {
 		serverHost = envRunAddr
+	}
+
+	if envBaseAddr := os.Getenv("BASE_URL"); envBaseAddr != "" {
 		baseHost = envBaseAddr
 	}
 
