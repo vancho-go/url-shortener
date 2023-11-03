@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/vancho-go/url-shortener/internal/app/base62"
 	"github.com/vancho-go/url-shortener/internal/app/logger"
@@ -98,5 +100,17 @@ func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
 			return
 		}
+	}
+}
+
+func CheckDBConnection(db *sql.DB) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		err := db.Ping()
+		if err != nil {
+			http.Error(res, "Error pinging DB", http.StatusInternalServerError)
+			return
+		}
+		fmt.Println(err)
+		res.WriteHeader(http.StatusOK)
 	}
 }

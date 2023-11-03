@@ -26,6 +26,18 @@ func main() {
 		panic(errors.New("error parsing server configuration"))
 	}
 
+	logger.Log.Info("Parsing db configuration")
+	dbConfiguration, err := config.ParseDB()
+	if err != nil {
+		panic(errors.New("error parsing DB configuration"))
+	}
+
+	logger.Log.Info("Initializing DB")
+	db, err := storage.Initialize(dbConfiguration.DSN)
+	if err != nil {
+		panic(errors.New("error DB initializing"))
+	}
+
 	logger.Log.Info("Initializing storage")
 	dbInstance, err := storage.NewEncoderDecoder(configuration.FileStorage)
 	if err != nil {
@@ -43,6 +55,7 @@ func main() {
 
 	logger.Log.Info("Running server", zap.String("address", configuration.ServerHost))
 	r := chi.NewRouter()
+	r.Get("/ping", logger.RequestLogger((handlers.CheckDBConnection(db))))
 	r.Get("/{shortenURL}", logger.RequestLogger(compressMiddleware(handlers.DecodeURL(dbInstance))))
 	r.Post("/", logger.RequestLogger(compressMiddleware(handlers.EncodeURL(dbInstance, configuration.BaseHost))))
 	r.Post("/api/shorten", logger.RequestLogger(compressMiddleware(handlers.EncodeURLJSON(dbInstance, configuration.BaseHost))))
