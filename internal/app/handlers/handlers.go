@@ -1,19 +1,21 @@
 package handlers
 
 import (
+	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/vancho-go/url-shortener/internal/app/base62"
+	"github.com/vancho-go/url-shortener/internal/app/logger"
+	"github.com/vancho-go/url-shortener/internal/app/models"
+	"go.uber.org/zap"
 	"io"
-	"log"
 	"math/rand"
 	"net/http"
 )
 
-//var dbInstance = make(storage.MapDB)
-
 type Storage interface {
 	AddURL(string, string) error
 	GetURL(string) (string, error)
+	IsShortenUnique(string) bool
 }
 
 func DecodeURL(db Storage) http.HandlerFunc {
@@ -38,12 +40,15 @@ func EncodeURL(db Storage, addr string) http.HandlerFunc {
 			return
 		}
 		if string(originalURL) == "" {
-			res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			http.Error(res, "URL parameter is missing", http.StatusBadRequest)
 			return
 		}
 
 		shortenURL := base62.Base62Encode(rand.Uint64())
+		for !db.IsShortenUnique(shortenURL) {
+			shortenURL = base62.Base62Encode(rand.Uint64())
+		}
+
 		err = db.AddURL(string(originalURL), shortenURL)
 		if err != nil {
 			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
@@ -52,7 +57,46 @@ func EncodeURL(db Storage, addr string) http.HandlerFunc {
 		res.WriteHeader(http.StatusCreated)
 		_, err = res.Write([]byte(addr + "/" + shortenURL))
 		if err != nil {
-			log.Printf("Write failed: %v", err)
+			logger.Log.Error("write failed", zap.Error(err))
+		}
+	}
+}
+
+func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		var request models.APIShortenRequest
+		dec := json.NewDecoder(req.Body)
+		if err := dec.Decode(&request); err != nil {
+			logger.Log.Debug("can't decode request JSON body", zap.Error(err))
+			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
+			return
+		}
+
+		originalURL := request.URL
+		if originalURL == "" {
+			http.Error(res, "URL parameter is missing", http.StatusBadRequest)
+			return
+		}
+
+		shortenURL := base62.Base62Encode(rand.Uint64())
+
+		err := db.AddURL(string(originalURL), shortenURL)
+		if err != nil {
+			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
+			return
+		}
+
+		response := models.APIShortenResponse{
+			Result: addr + "/" + shortenURL,
+		}
+
+		res.Header().Set("Content-Type", "application/json")
+		res.WriteHeader(http.StatusCreated)
+		enc := json.NewEncoder(res)
+		if err := enc.Encode(response); err != nil {
+			logger.Log.Error("error encoding response", zap.Error(err))
+			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
+			return
 		}
 	}
 }

@@ -5,31 +5,88 @@ import (
 	"os"
 )
 
-var Configuration = new(Config)
-
-type Config struct {
-	ServerHost string
-	ClientHost string
-	BaseHost   string
+type ServerConfig struct {
+	ServerHost  string
+	BaseHost    string
+	FileStorage string
 }
 
-func ParseServerFlags() {
-	flag.StringVar(&Configuration.ServerHost, "a", "localhost:8080", "address and port to run server")
-	flag.StringVar(&Configuration.BaseHost, "b", "http://localhost:8080", "address and port for shorten URLs")
+type serverConfigBuilder struct {
+	config ServerConfig
+}
+
+func (b *serverConfigBuilder) WithServerHost(serverHost string) *serverConfigBuilder {
+	b.config.ServerHost = serverHost
+	return b
+}
+
+func (b *serverConfigBuilder) WithBaseHost(baseHost string) *serverConfigBuilder {
+	b.config.BaseHost = baseHost
+	return b
+}
+
+func (b *serverConfigBuilder) WithFileStorage(fileStorage string) *serverConfigBuilder {
+	b.config.FileStorage = fileStorage
+	return b
+}
+
+func ParseServer() (ServerConfig, error) {
+	var serverHost string
+	flag.StringVar(&serverHost, "a", "localhost:8080", "address and port to run server")
+
+	var baseHost string
+	flag.StringVar(&baseHost, "b", "http://localhost:8080", "address and port for shorten URLs")
+
+	var fileStorage string
+	flag.StringVar(&fileStorage, "f", "/tmp/short-url-db.json", "absolute path for file storage")
+
 	flag.Parse()
 
-	if envRunAddr, envBaseAddr, envClientAddr := os.Getenv("SERVER_ADDRESS"), os.Getenv("BASE_URL"), os.Getenv("CLIENT_ADDRESS"); envRunAddr != "" && envBaseAddr != "" && envClientAddr != "" {
-		Configuration.ServerHost = envRunAddr
-		Configuration.BaseHost = envBaseAddr
-		Configuration.ClientHost = envClientAddr
+	if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {
+		serverHost = envRunAddr
 	}
+
+	if envBaseAddr := os.Getenv("BASE_URL"); envBaseAddr != "" {
+		baseHost = envBaseAddr
+	}
+
+	if envFileStorage := os.Getenv("FILE_STORAGE_PATH"); envFileStorage != "" {
+		fileStorage = envFileStorage
+	}
+
+	var builder serverConfigBuilder
+
+	builder.WithServerHost(serverHost).
+		WithBaseHost(baseHost).WithFileStorage(fileStorage)
+
+	return builder.config, nil
 }
 
-func ParseClientFlags() {
-	flag.StringVar(&Configuration.ClientHost, "c", "http://localhost:8080", "address and port for client")
+type ClientConfig struct {
+	ClientHost string
+}
+
+type clientConfigBuilder struct {
+	config ClientConfig
+}
+
+func (b *clientConfigBuilder) WithClientHost(clientHost string) *clientConfigBuilder {
+	b.config.ClientHost = clientHost
+	return b
+}
+func ParseClient() (ClientConfig, error) {
+	var clientHost string
+	flag.StringVar(&clientHost, "c", "http://localhost:8080", "address and port for client")
+
 	flag.Parse()
 
 	if envClientAddr := os.Getenv("CLIENT_ADDRESS"); envClientAddr != "" {
-		Configuration.ClientHost = envClientAddr
+		clientHost = envClientAddr
 	}
+
+	var builder clientConfigBuilder
+
+	builder.WithClientHost(clientHost)
+
+	return builder.config, nil
 }
