@@ -26,14 +26,14 @@ func main() {
 		panic(errors.New("error parsing server configuration"))
 	}
 
-	logger.Log.Info("Parsing db configuration")
-	dbConfiguration, err := config.ParseDB()
-	if err != nil {
-		panic(errors.New("error parsing DB configuration"))
-	}
+	//logger.Log.Info("Parsing db configuration")
+	//dbConfiguration, err := config.ParseDB()
+	//if err != nil {
+	//	panic(errors.New("error parsing DB configuration"))
+	//}
 
 	logger.Log.Info("Initializing DB")
-	db, err := storage.Initialize(dbConfiguration.DSN)
+	db, err := storage.Initialize(configuration.DBDSN)
 	if err != nil {
 		panic(errors.New("error DB initializing"))
 	}

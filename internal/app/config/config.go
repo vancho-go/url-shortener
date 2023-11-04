@@ -9,6 +9,7 @@ type ServerConfig struct {
 	ServerHost  string
 	BaseHost    string
 	FileStorage string
+	DBDSN       string
 }
 
 type serverConfigBuilder struct {
@@ -30,6 +31,11 @@ func (b *serverConfigBuilder) WithFileStorage(fileStorage string) *serverConfigB
 	return b
 }
 
+func (b *serverConfigBuilder) WithDSN(dsn string) *serverConfigBuilder {
+	b.config.DBDSN = dsn
+	return b
+}
+
 func ParseServer() (ServerConfig, error) {
 	var serverHost string
 	flag.StringVar(&serverHost, "a", "localhost:8080", "address and port to run server")
@@ -39,6 +45,9 @@ func ParseServer() (ServerConfig, error) {
 
 	var fileStorage string
 	flag.StringVar(&fileStorage, "f", "/tmp/short-url-db.json", "absolute path for file storage")
+
+	var dsn string
+	flag.StringVar(&dsn, "d", "host=localhost port=5432 user=vancho password=vancho_pswd dbname=vancho_db sslmode=disable", "data source name for driver to connect to DB")
 
 	flag.Parse()
 
@@ -54,10 +63,14 @@ func ParseServer() (ServerConfig, error) {
 		fileStorage = envFileStorage
 	}
 
+	if envDSN := os.Getenv("DATABASE_DSN"); envDSN != "" {
+		dsn = envDSN
+	}
+
 	var builder serverConfigBuilder
 
 	builder.WithServerHost(serverHost).
-		WithBaseHost(baseHost).WithFileStorage(fileStorage)
+		WithBaseHost(baseHost).WithFileStorage(fileStorage).WithDSN(dsn)
 
 	return builder.config, nil
 }
@@ -92,32 +105,32 @@ func ParseClient() (ClientConfig, error) {
 	return builder.config, nil
 }
 
-type DBConfig struct {
-	DSN string
-}
-
-type dbConfigBuilder struct {
-	config DBConfig
-}
-
-func (b *dbConfigBuilder) WithDSN(dsn string) *dbConfigBuilder {
-	b.config.DSN = dsn
-	return b
-}
-
-func ParseDB() (DBConfig, error) {
-	var dsn string
-	flag.StringVar(&dsn, "d", "host=localhost port=5432 user=vancho password=vancho_pswd dbname=vancho_db sslmode=disable", "data source name for driver to connect to DB")
-
-	flag.Parse()
-
-	if envDSN := os.Getenv("DATABASE_DSN"); envDSN != "" {
-		dsn = envDSN
-	}
-
-	var builder dbConfigBuilder
-
-	builder.WithDSN(dsn)
-
-	return builder.config, nil
-}
+//type DBConfig struct {
+//	DSN string
+//}
+//
+//type dbConfigBuilder struct {
+//	config DBConfig
+//}
+//
+//func (b *dbConfigBuilder) WithDSN(dsn string) *dbConfigBuilder {
+//	b.config.DSN = dsn
+//	return b
+//}
+//
+//func ParseDB() (DBConfig, error) {
+//	var dsn string
+//	flag.StringVar(&dsn, "d", "host=localhost port=5432 user=vancho password=vancho_pswd dbname=vancho_db sslmode=disable", "data source name for driver to connect to DB")
+//
+//	flag.Parse()
+//
+//	if envDSN := os.Getenv("DATABASE_DSN"); envDSN != "" {
+//		dsn = envDSN
+//	}
+//
+//	var builder dbConfigBuilder
+//
+//	builder.WithDSN(dsn)
+//
+//	return builder.config, nil
+//}
