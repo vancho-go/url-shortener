@@ -92,7 +92,7 @@ func (db *Database) IsShortenUnique(ctx context.Context, shortenURL string) bool
 	row := stmt.QueryRowContext(ctx, shortenURL)
 
 	var count int
-	_ = row.Scan(&count)
+	err = row.Scan(&count)
 	if err != nil {
 		logger.Log.Error("error in scanning count query")
 		//TODO
