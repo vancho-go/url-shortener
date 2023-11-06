@@ -32,7 +32,6 @@ func initStorage(serverConfig config.ServerConfig) (handlers.Storage, error) {
 		if err != nil {
 			return nil, errors.New("error in FileStorage constructor")
 		}
-		defer dbInstance.Close()
 
 		err = dbInstance.Initialize()
 		if err != nil {
