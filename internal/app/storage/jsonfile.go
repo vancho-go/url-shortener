@@ -52,11 +52,11 @@ func (ed *EncoderDecoder) Close() error {
 }
 
 func (ed *EncoderDecoder) AddURL(originalURL, shortenURL string) error {
-	data := &Data{ShortURL: shortenURL, OriginalURL: originalURL}
+	//data := &Data{ShortURL: shortenURL, OriginalURL: originalURL}
 	ed.mu.Lock()
 	ed.storage[shortenURL] = originalURL
 	defer ed.mu.Unlock()
-	return ed.encoder.Encode(&data)
+	return nil
 }
 
 func (ed *EncoderDecoder) GetURL(shortenURL string) (string, error) {

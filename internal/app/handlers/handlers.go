@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/vancho-go/url-shortener/internal/app/base62"
 	"github.com/vancho-go/url-shortener/internal/app/logger"
 	"github.com/vancho-go/url-shortener/internal/app/models"
+	"github.com/vancho-go/url-shortener/internal/app/storage"
 	"go.uber.org/zap"
 	"io"
 	"math/rand"
@@ -105,12 +105,18 @@ func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 	}
 }
 
-func CheckDBConnection(db *sql.DB) http.HandlerFunc {
+func CheckDBConnection(store Storage) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
+		db, ok := store.(*storage.Database)
+		if !ok {
+			http.Error(res, "Internal DB Error", http.StatusInternalServerError)
+			return
+		}
+
 		ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
 		defer cancel()
 
-		if err := db.PingContext(ctx); err != nil {
+		if err := db.DB.PingContext(ctx); err != nil {
 			http.Error(res, "Error pinging DB", http.StatusInternalServerError)
 			return
 		}
