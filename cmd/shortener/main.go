@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/vancho-go/url-shortener/internal/app/compress"
@@ -11,7 +10,6 @@ import (
 	"github.com/vancho-go/url-shortener/internal/app/storage"
 	"go.uber.org/zap"
 	"net/http"
-	"time"
 )
 
 const flagLogLevel = "Info"
@@ -20,9 +18,7 @@ func initStorage(serverConfig config.ServerConfig) (handlers.Storage, error) {
 	switch {
 	case serverConfig.DBDSN != "":
 		logger.Log.Info("Initializing postgres storage")
-		ctx2Sec, cancel2Sec := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel2Sec()
-		db, err := storage.Initialize(ctx2Sec, serverConfig.DBDSN)
+		db, err := storage.Initialize(serverConfig.DBDSN)
 		if err != nil {
 			return nil, errors.New("error Postgres DB initializing")
 		}

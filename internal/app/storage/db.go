@@ -11,13 +11,13 @@ type Database struct {
 	DB *sql.DB
 }
 
-func Initialize(ctx context.Context, dsn string) (*Database, error) {
+func Initialize(dsn string) (*Database, error) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return &Database{}, err
 	}
 
-	err = db.PingContext(ctx)
+	err = db.Ping()
 	if err != nil {
 		return &Database{}, err
 	}
@@ -92,12 +92,12 @@ func (db *Database) IsShortenUnique(ctx context.Context, shortenURL string) bool
 	row := stmt.QueryRowContext(ctx, shortenURL)
 
 	var count int
-	_ = row.Scan(&count)
-	//if err != nil {
-	//	logger.Log.Error("error in scanning count query")
-	//	//TODO
-	//	return false
-	//}
+	err = row.Scan(&count)
+	if err != nil {
+		logger.Log.Error("error in scanning count query")
+		//TODO
+		return false
+	}
 	return count == 0
 }
 
