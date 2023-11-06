@@ -16,16 +16,18 @@ import (
 )
 
 type Storage interface {
-	AddURL(string, string) error
-	GetURL(string) (string, error)
-	IsShortenUnique(string) bool
+	AddURL(context.Context, string, string) error
+	GetURL(context.Context, string) (string, error)
+	IsShortenUnique(context.Context, string) bool
 	Close() error
 }
 
 func DecodeURL(db Storage) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		shortenURL := chi.URLParam(req, "shortenURL")
-		originalURL, err := db.GetURL(shortenURL)
+		ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+		defer cancel()
+		originalURL, err := db.GetURL(ctx, shortenURL)
 		if err != nil {
 			http.Error(res, "No such shorten URL", http.StatusBadRequest)
 			return
@@ -49,11 +51,15 @@ func EncodeURL(db Storage, addr string) http.HandlerFunc {
 		}
 
 		shortenURL := base62.Base62Encode(rand.Uint64())
-		for !db.IsShortenUnique(shortenURL) {
+		ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+		defer cancel()
+		for !db.IsShortenUnique(ctx, shortenURL) {
 			shortenURL = base62.Base62Encode(rand.Uint64())
 		}
 
-		err = db.AddURL(string(originalURL), shortenURL)
+		ctx, cancel2 := context.WithTimeout(req.Context(), 3*time.Second)
+		defer cancel2()
+		err = db.AddURL(ctx, string(originalURL), shortenURL)
 		if err != nil {
 			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
 			return
@@ -83,8 +89,9 @@ func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 		}
 
 		shortenURL := base62.Base62Encode(rand.Uint64())
-
-		err := db.AddURL(string(originalURL), shortenURL)
+		ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+		defer cancel()
+		err := db.AddURL(ctx, string(originalURL), shortenURL)
 		if err != nil {
 			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
 			return

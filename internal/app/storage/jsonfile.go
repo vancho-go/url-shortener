@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -51,7 +52,7 @@ func (ed *EncoderDecoder) Close() error {
 	return ed.file.Close()
 }
 
-func (ed *EncoderDecoder) AddURL(originalURL, shortenURL string) error {
+func (ed *EncoderDecoder) AddURL(ctx context.Context, originalURL, shortenURL string) error {
 	data := &Data{ShortURL: shortenURL, OriginalURL: originalURL}
 	ed.mu.Lock()
 	ed.storage[shortenURL] = originalURL
@@ -59,7 +60,7 @@ func (ed *EncoderDecoder) AddURL(originalURL, shortenURL string) error {
 	return ed.encoder.Encode(&data)
 }
 
-func (ed *EncoderDecoder) GetURL(shortenURL string) (string, error) {
+func (ed *EncoderDecoder) GetURL(ctx context.Context, shortenURL string) (string, error) {
 	ed.mu.Lock()
 	originalURL, ok := ed.storage[shortenURL]
 	defer ed.mu.Unlock()
@@ -69,7 +70,7 @@ func (ed *EncoderDecoder) GetURL(shortenURL string) (string, error) {
 	return originalURL, nil
 }
 
-func (ed *EncoderDecoder) IsShortenUnique(shortenURL string) bool {
+func (ed *EncoderDecoder) IsShortenUnique(ctx context.Context, shortenURL string) bool {
 	_, ok := ed.storage[shortenURL]
 	return !ok
 }
