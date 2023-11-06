@@ -21,3 +21,7 @@ func (storage MapDB) IsShortenUnique(shortenURL string) bool {
 	_, ok := storage[shortenURL]
 	return !ok
 }
+
+func (storage MapDB) Close() error {
+	return nil
+}

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
@@ -11,12 +12,14 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"time"
 )
 
 type Storage interface {
 	AddURL(string, string) error
 	GetURL(string) (string, error)
 	IsShortenUnique(string) bool
+	Close() error
 }
 
 func DecodeURL(db Storage) http.HandlerFunc {
@@ -102,20 +105,15 @@ func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 	}
 }
 
-//func CheckDBConnection(db *sql.DB) http.HandlerFunc {
-//	return func(res http.ResponseWriter, req *http.Request) {
-//		err := db.Ping()
-//		if err != nil {
-//			http.Error(res, "Error pinging DB", http.StatusInternalServerError)
-//			return
-//		}
-//		fmt.Println(err)
-//		res.WriteHeader(http.StatusOK)
-//	}
-//}
-
 func CheckDBConnection(db *sql.DB) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
+		ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
+		defer cancel()
+
+		if err := db.PingContext(ctx); err != nil {
+			http.Error(res, "Error pinging DB", http.StatusInternalServerError)
+			return
+		}
 		res.WriteHeader(http.StatusOK)
 	}
 }

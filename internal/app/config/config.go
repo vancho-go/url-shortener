@@ -104,33 +104,3 @@ func ParseClient() (ClientConfig, error) {
 
 	return builder.config, nil
 }
-
-//type DBConfig struct {
-//	DSN string
-//}
-//
-//type dbConfigBuilder struct {
-//	config DBConfig
-//}
-//
-//func (b *dbConfigBuilder) WithDSN(dsn string) *dbConfigBuilder {
-//	b.config.DSN = dsn
-//	return b
-//}
-//
-//func ParseDB() (DBConfig, error) {
-//	var dsn string
-//	flag.StringVar(&dsn, "d", "host=localhost port=5432 user=vancho password=vancho_pswd dbname=vancho_db sslmode=disable", "data source name for driver to connect to DB")
-//
-//	flag.Parse()
-//
-//	if envDSN := os.Getenv("DATABASE_DSN"); envDSN != "" {
-//		dsn = envDSN
-//	}
-//
-//	var builder dbConfigBuilder
-//
-//	builder.WithDSN(dsn)
-//
-//	return builder.config, nil
-//}
