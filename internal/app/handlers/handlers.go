@@ -149,7 +149,7 @@ func EncodeBatch(db Storage, addr string) http.HandlerFunc {
 				http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
 				return
 			}
-			response = append(response, models.APIBatchResponse{CorrelationID: url.CorrelationID, ShortenURL: shortenURL})
+			response = append(response, models.APIBatchResponse{CorrelationID: url.CorrelationID, ShortenURL: addr + "/" + shortenURL})
 		}
 
 		res.Header().Set("Content-Type", "application/json")
