@@ -91,6 +91,12 @@ func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 		shortenURL := base62.Base62Encode(rand.Uint64())
 		ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
 		defer cancel()
+		for !db.IsShortenUnique(ctx, shortenURL) {
+			shortenURL = base62.Base62Encode(rand.Uint64())
+		}
+
+		ctx, cancel2 := context.WithTimeout(req.Context(), 3*time.Second)
+		defer cancel2()
 		err := db.AddURL(ctx, string(originalURL), shortenURL)
 		if err != nil {
 			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
@@ -99,6 +105,51 @@ func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 
 		response := models.APIShortenResponse{
 			Result: addr + "/" + shortenURL,
+		}
+
+		res.Header().Set("Content-Type", "application/json")
+		res.WriteHeader(http.StatusCreated)
+		enc := json.NewEncoder(res)
+		if err := enc.Encode(response); err != nil {
+			logger.Log.Error("error encoding response", zap.Error(err))
+			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
+			return
+		}
+	}
+}
+
+func EncodeBatch(db Storage, addr string) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		var request []models.APIBatchRequest
+		dec := json.NewDecoder(req.Body)
+		if err := dec.Decode(&request); err != nil {
+			logger.Log.Debug("can't decode request JSON body", zap.Error(err))
+			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
+			return
+		}
+
+		var response []models.APIBatchResponse
+		for _, url := range request {
+			originalURL := url.OriginalURL
+			if originalURL == "" {
+				continue
+			}
+
+			shortenURL := base62.Base62Encode(rand.Uint64())
+			ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+			defer cancel()
+			for !db.IsShortenUnique(ctx, shortenURL) {
+				shortenURL = base62.Base62Encode(rand.Uint64())
+			}
+
+			ctx, cancel2 := context.WithTimeout(req.Context(), 3*time.Second)
+			defer cancel2()
+			err := db.AddURL(ctx, string(originalURL), shortenURL)
+			if err != nil {
+				http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
+				return
+			}
+			response = append(response, models.APIBatchResponse{CorrelationID: url.CorrelationID, ShortenURL: shortenURL})
 		}
 
 		res.Header().Set("Content-Type", "application/json")

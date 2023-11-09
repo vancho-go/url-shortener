@@ -69,7 +69,11 @@ func main() {
 	r.Get("/ping", logger.RequestLogger((handlers.CheckDBConnection(dbInstance))))
 	r.Get("/{shortenURL}", logger.RequestLogger(compressMiddleware(handlers.DecodeURL(dbInstance))))
 	r.Post("/", logger.RequestLogger(compressMiddleware(handlers.EncodeURL(dbInstance, configuration.BaseHost))))
-	r.Post("/api/shorten", logger.RequestLogger(compressMiddleware(handlers.EncodeURLJSON(dbInstance, configuration.BaseHost))))
+
+	r.Route("/api", func(r chi.Router) {
+		r.Post("/shorten", logger.RequestLogger(compressMiddleware(handlers.EncodeURLJSON(dbInstance, configuration.BaseHost))))
+		r.Post("/shorten/batch", logger.RequestLogger(compressMiddleware(handlers.EncodeBatch(dbInstance, configuration.BaseHost))))
+	})
 
 	err = http.ListenAndServe(configuration.ServerHost, r)
 	if err != nil {
