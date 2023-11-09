@@ -46,8 +46,14 @@ func CreateIfNotExists(db *sql.DB) error {
 }
 
 func (db *Database) AddURL(ctx context.Context, originalURL, shortenURL string) error {
+	tx, err := db.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	insertQuery := "INSERT INTO urls (shorten_url, original_url) VALUES ($1, $2)"
-	stmt, err := db.DB.Prepare(insertQuery)
+	stmt, err := db.DB.PrepareContext(ctx, insertQuery)
 	if err != nil {
 		return err
 	}
@@ -57,7 +63,7 @@ func (db *Database) AddURL(ctx context.Context, originalURL, shortenURL string) 
 	if err != nil {
 		return err
 	}
-	return nil
+	return tx.Commit()
 }
 
 func (db *Database) GetURL(ctx context.Context, shortenURL string) (string, error) {
