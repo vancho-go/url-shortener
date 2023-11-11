@@ -3,7 +3,10 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/vancho-go/url-shortener/internal/app/base62"
 	"github.com/vancho-go/url-shortener/internal/app/logger"
 	"github.com/vancho-go/url-shortener/internal/app/models"
@@ -14,6 +17,8 @@ import (
 	"net/http"
 	"time"
 )
+
+var ErrUnique = errors.New("original URL already exists")
 
 type Storage interface {
 	AddURL(context.Context, string, string) error
@@ -61,10 +66,28 @@ func EncodeURL(db Storage, addr string) http.HandlerFunc {
 		defer cancel2()
 		err = db.AddURL(ctx, string(originalURL), shortenURL)
 		if err != nil {
-			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
-			return
+			if !isUniqueViolationError(err) {
+				http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
+				return
+			}
+
+			pg, ok := db.(*storage.Database)
+			if !ok {
+				http.Error(res, "Internal DB Error", http.StatusInternalServerError)
+				return
+			}
+			ctx, cancel3 := context.WithTimeout(req.Context(), 3*time.Second)
+			defer cancel3()
+			shortenURL, err = pg.GetShortenURLByOriginal(ctx, string(originalURL))
+			if err != nil {
+				http.Error(res, "Error getting shorten URL", http.StatusInternalServerError)
+				return
+			}
+			res.WriteHeader(http.StatusConflict)
+		} else {
+			res.WriteHeader(http.StatusCreated)
 		}
-		res.WriteHeader(http.StatusCreated)
+
 		_, err = res.Write([]byte(addr + "/" + shortenURL))
 		if err != nil {
 			logger.Log.Error("write failed", zap.Error(err))
@@ -97,18 +120,36 @@ func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 
 		ctx, cancel2 := context.WithTimeout(req.Context(), 3*time.Second)
 		defer cancel2()
-		err := db.AddURL(ctx, string(originalURL), shortenURL)
+		err := db.AddURL(ctx, originalURL, shortenURL)
 		if err != nil {
-			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
-			return
+			if !isUniqueViolationError(err) {
+				http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
+				return
+			}
+
+			pg, ok := db.(*storage.Database)
+			if !ok {
+				http.Error(res, "Internal DB Error", http.StatusInternalServerError)
+				return
+			}
+			ctx, cancel3 := context.WithTimeout(req.Context(), 3*time.Second)
+			defer cancel3()
+			shortenURL, err = pg.GetShortenURLByOriginal(ctx, originalURL)
+			if err != nil {
+				http.Error(res, "Error getting shorten URL", http.StatusInternalServerError)
+				return
+			}
+			res.Header().Set("Content-Type", "application/json")
+			res.WriteHeader(http.StatusConflict)
+		} else {
+			res.Header().Set("Content-Type", "application/json")
+			res.WriteHeader(http.StatusCreated)
 		}
 
 		response := models.APIShortenResponse{
 			Result: addr + "/" + shortenURL,
 		}
 
-		res.Header().Set("Content-Type", "application/json")
-		res.WriteHeader(http.StatusCreated)
 		enc := json.NewEncoder(res)
 		if err := enc.Encode(response); err != nil {
 			logger.Log.Error("error encoding response", zap.Error(err))
@@ -144,7 +185,7 @@ func EncodeBatch(db Storage, addr string) http.HandlerFunc {
 
 			ctx, cancel2 := context.WithTimeout(req.Context(), 3*time.Second)
 			defer cancel2()
-			err := db.AddURL(ctx, string(originalURL), shortenURL)
+			err := db.AddURL(ctx, originalURL, shortenURL)
 			if err != nil {
 				http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
 				return
@@ -180,4 +221,12 @@ func CheckDBConnection(store Storage) http.HandlerFunc {
 		}
 		res.WriteHeader(http.StatusOK)
 	}
+}
+
+func isUniqueViolationError(err error) bool {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+		return true
+	}
+	return false
 }

@@ -35,7 +35,8 @@ func CreateIfNotExists(db *sql.DB) error {
 			id SERIAL PRIMARY KEY,
 			shorten_url VARCHAR NOT NULL,
 			original_url VARCHAR NOT NULL,
-			UNIQUE (shorten_url)
+			UNIQUE (shorten_url),
+		    UNIQUE (original_url)
 		);`
 
 	_, err := db.Exec(createTableQuery)
@@ -83,6 +84,24 @@ func (db *Database) GetURL(ctx context.Context, shortenURL string) (string, erro
 	}
 	return originalURL, nil
 
+}
+
+func (db *Database) GetShortenURLByOriginal(ctx context.Context, originalURL string) (string, error) {
+	selectQuery := "SELECT shorten_url FROM urls WHERE original_url=$1"
+	stmt, err := db.DB.Prepare(selectQuery)
+	if err != nil {
+		return "", err
+	}
+	defer stmt.Close()
+
+	row := stmt.QueryRowContext(ctx, originalURL)
+
+	var shortenURL string
+	err = row.Scan(&shortenURL)
+	if err != nil {
+		return "", err
+	}
+	return shortenURL, nil
 }
 
 func (db *Database) IsShortenUnique(ctx context.Context, shortenURL string) bool {
