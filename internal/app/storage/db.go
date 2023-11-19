@@ -14,17 +14,17 @@ type Database struct {
 func Initialize(dsn string) (*Database, error) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
-		return &Database{}, err
+		return nil, err
 	}
 
 	err = db.Ping()
 	if err != nil {
-		return &Database{}, err
+		return nil, err
 	}
 
 	err = CreateIfNotExists(db)
 	if err != nil {
-		return &Database{}, err
+		return nil, err
 	}
 	return &Database{DB: db}, nil
 }

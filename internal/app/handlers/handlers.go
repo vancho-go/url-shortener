@@ -30,7 +30,7 @@ type Storage interface {
 func DecodeURL(db Storage) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		shortenURL := chi.URLParam(req, "shortenURL")
-		ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+		ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
 		defer cancel()
 		originalURL, err := db.GetURL(ctx, shortenURL)
 		if err != nil {
@@ -56,13 +56,13 @@ func EncodeURL(db Storage, addr string) http.HandlerFunc {
 		}
 
 		shortenURL := base62.Base62Encode(rand.Uint64())
-		ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+		ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
 		defer cancel()
 		for !db.IsShortenUnique(ctx, shortenURL) {
 			shortenURL = base62.Base62Encode(rand.Uint64())
 		}
 
-		ctx, cancel2 := context.WithTimeout(req.Context(), 3*time.Second)
+		ctx, cancel2 := context.WithTimeout(req.Context(), 1*time.Second)
 		defer cancel2()
 		err = db.AddURL(ctx, string(originalURL), shortenURL)
 		if err != nil {
@@ -76,7 +76,7 @@ func EncodeURL(db Storage, addr string) http.HandlerFunc {
 				http.Error(res, "Internal DB Error", http.StatusInternalServerError)
 				return
 			}
-			ctx, cancel3 := context.WithTimeout(req.Context(), 3*time.Second)
+			ctx, cancel3 := context.WithTimeout(req.Context(), 1*time.Second)
 			defer cancel3()
 			shortenURL, err = pg.GetShortenURLByOriginal(ctx, string(originalURL))
 			if err != nil {
@@ -112,13 +112,13 @@ func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 		}
 
 		shortenURL := base62.Base62Encode(rand.Uint64())
-		ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+		ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
 		defer cancel()
 		for !db.IsShortenUnique(ctx, shortenURL) {
 			shortenURL = base62.Base62Encode(rand.Uint64())
 		}
 
-		ctx, cancel2 := context.WithTimeout(req.Context(), 3*time.Second)
+		ctx, cancel2 := context.WithTimeout(req.Context(), 1*time.Second)
 		defer cancel2()
 		err := db.AddURL(ctx, originalURL, shortenURL)
 		if err != nil {
@@ -132,7 +132,7 @@ func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 				http.Error(res, "Internal DB Error", http.StatusInternalServerError)
 				return
 			}
-			ctx, cancel3 := context.WithTimeout(req.Context(), 3*time.Second)
+			ctx, cancel3 := context.WithTimeout(req.Context(), 1*time.Second)
 			defer cancel3()
 			shortenURL, err = pg.GetShortenURLByOriginal(ctx, originalURL)
 			if err != nil {
@@ -177,13 +177,13 @@ func EncodeBatch(db Storage, addr string) http.HandlerFunc {
 			}
 
 			shortenURL := base62.Base62Encode(rand.Uint64())
-			ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+			ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
 			defer cancel()
 			for !db.IsShortenUnique(ctx, shortenURL) {
 				shortenURL = base62.Base62Encode(rand.Uint64())
 			}
 
-			ctx, cancel2 := context.WithTimeout(req.Context(), 3*time.Second)
+			ctx, cancel2 := context.WithTimeout(req.Context(), 1*time.Second)
 			defer cancel2()
 			err := db.AddURL(ctx, originalURL, shortenURL)
 			if err != nil {
@@ -225,8 +225,5 @@ func CheckDBConnection(store Storage) http.HandlerFunc {
 
 func isUniqueViolationError(err error) bool {
 	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
-		return true
-	}
-	return false
+	return errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation
 }
