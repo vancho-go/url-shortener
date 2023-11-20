@@ -47,7 +47,7 @@ func ParseServer() (ServerConfig, error) {
 	flag.StringVar(&fileStorage, "f", "/tmp/short-url-db.json", "absolute path for file storage")
 
 	var dsn string
-	flag.StringVar(&dsn, "d", "host=localhost port=5432 user=vancho password=vancho_pswd dbname=vancho_db sslmode=disable", "data source name for driver to connect to DB")
+	flag.StringVar(&dsn, "d", "", "data source name for driver to connect to DB")
 
 	flag.Parse()
 
