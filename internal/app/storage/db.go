@@ -96,9 +96,9 @@ func (db *Database) GetUserURLs(ctx context.Context, userID string) ([]models.AP
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.QueryContext(ctx, userID)
-	if err != nil {
-		return nil, err
+	rows, err2 := stmt.QueryContext(ctx, userID)
+	if err2 != nil {
+		return nil, err2
 	}
 	var userURLs []models.APIUserURLResponse
 	for rows.Next() {
