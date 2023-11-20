@@ -52,11 +52,20 @@ func EncodeURL(db Storage, addr string) http.HandlerFunc {
 			logger.Log.Debug("error getting cookie from request")
 		}
 		if cookie == nil {
-			cookie = req.Context().Value("cookie").(*http.Cookie)
+			cookie2, ok := req.Context().Value("cookie").(*http.Cookie)
+			if !ok {
+				logger.Log.Debug("error conversion cookie")
+			} else {
+				cookie = cookie2
+			}
+
 		}
-		userID, err := auth.GetUserId(cookie.Value)
-		if err != nil {
-			logger.Log.Debug("something wrong with user_id")
+		var userID string
+		if cookie != nil {
+			userID, err = auth.GetUserID(cookie.Value)
+			if err != nil {
+				logger.Log.Debug("something wrong with user_id")
+			}
 		}
 
 		originalURL, err := io.ReadAll(req.Body)
@@ -78,12 +87,6 @@ func EncodeURL(db Storage, addr string) http.HandlerFunc {
 
 		ctx, cancel2 := context.WithTimeout(req.Context(), 1*time.Second)
 		defer cancel2()
-
-		if err != nil {
-			logger.Log.Error("something wrong with user_id", zap.Error(err))
-			http.Error(res, "Bad user_id", http.StatusUnauthorized)
-			return
-		}
 
 		err = db.AddURL(ctx, string(originalURL), shortenURL, userID)
 		if err != nil {
@@ -120,11 +123,23 @@ func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := req.Cookie("AuthToken")
 		if err != nil {
-			logger.Log.Error("error getting cookie", zap.Error(err))
+			logger.Log.Debug("error getting cookie from request")
 		}
-		userID, err := auth.GetUserId(cookie.Value)
-		if err != nil {
-			logger.Log.Error("something wrong with user_id", zap.Error(err))
+		if cookie == nil {
+			cookie2, ok := req.Context().Value("cookie").(*http.Cookie)
+			if !ok {
+				logger.Log.Debug("error conversion cookie")
+			} else {
+				cookie = cookie2
+			}
+
+		}
+		var userID string
+		if cookie != nil {
+			userID, err = auth.GetUserID(cookie.Value)
+			if err != nil {
+				logger.Log.Debug("something wrong with user_id")
+			}
 		}
 
 		var request models.APIShortenRequest
@@ -193,12 +208,25 @@ func EncodeBatch(db Storage, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := req.Cookie("AuthToken")
 		if err != nil {
-			logger.Log.Error("error getting cookie", zap.Error(err))
+			logger.Log.Debug("error getting cookie from request")
 		}
-		userID, err := auth.GetUserId(cookie.Value)
-		if err != nil {
-			logger.Log.Error("something wrong with user_id", zap.Error(err))
+		if cookie == nil {
+			cookie2, ok := req.Context().Value("cookie").(*http.Cookie)
+			if !ok {
+				logger.Log.Debug("error conversion cookie")
+			} else {
+				cookie = cookie2
+			}
+
 		}
+		var userID string
+		if cookie != nil {
+			userID, err = auth.GetUserID(cookie.Value)
+			if err != nil {
+				logger.Log.Debug("something wrong with user_id")
+			}
+		}
+
 		var request []models.APIBatchRequest
 		dec := json.NewDecoder(req.Body)
 		if err := dec.Decode(&request); err != nil {
@@ -250,7 +278,7 @@ func GetUserURLs(db Storage, addr string) http.HandlerFunc {
 			http.Error(res, "No cookie presented", http.StatusUnauthorized)
 			return
 		}
-		userID, err := auth.GetUserId(cookie.Value)
+		userID, err := auth.GetUserID(cookie.Value)
 		if err != nil {
 			logger.Log.Debug("something wrong with user_id", zap.Error(err))
 			http.Error(res, "Bad user_id", http.StatusUnauthorized)

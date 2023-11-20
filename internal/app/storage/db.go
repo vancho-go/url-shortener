@@ -48,7 +48,7 @@ func CreateIfNotExists(db *sql.DB) error {
 	return nil
 }
 
-func (db *Database) AddURL(ctx context.Context, originalURL, shortenURL, user_id string) error {
+func (db *Database) AddURL(ctx context.Context, originalURL, shortenURL, userID string) error {
 	tx, err := db.DB.Begin()
 	if err != nil {
 		return err
@@ -62,7 +62,7 @@ func (db *Database) AddURL(ctx context.Context, originalURL, shortenURL, user_id
 	}
 	defer stmt.Close()
 
-	_, err = stmt.ExecContext(ctx, shortenURL, originalURL, user_id)
+	_, err = stmt.ExecContext(ctx, shortenURL, originalURL, userID)
 	if err != nil {
 		return err
 	}
