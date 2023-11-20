@@ -103,7 +103,7 @@ func (db *Database) GetUserURLs(ctx context.Context, userID string) ([]models.AP
 	var userURLs []models.APIUserURLResponse
 	for rows.Next() {
 		var userURL models.APIUserURLResponse
-		err = rows.Scan(&userURL.ShortenURL, &userURL.OriginalURL)
+		err := rows.Scan(&userURL.ShortenURL, &userURL.OriginalURL)
 		if err != nil {
 			return nil, err
 		}

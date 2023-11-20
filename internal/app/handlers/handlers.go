@@ -52,7 +52,7 @@ func EncodeURL(db Storage, addr string) http.HandlerFunc {
 			logger.Log.Debug("error getting cookie from request")
 		}
 		if cookie == nil {
-			cookie2, ok := req.Context().Value("cookie").(*http.Cookie)
+			cookie2, ok := req.Context().Value(auth.CookieKey).(*http.Cookie)
 			if !ok {
 				logger.Log.Debug("error conversion cookie")
 			} else {
@@ -126,7 +126,7 @@ func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 			logger.Log.Debug("error getting cookie from request")
 		}
 		if cookie == nil {
-			cookie2, ok := req.Context().Value("cookie").(*http.Cookie)
+			cookie2, ok := req.Context().Value(auth.CookieKey).(*http.Cookie)
 			if !ok {
 				logger.Log.Debug("error conversion cookie")
 			} else {
@@ -211,7 +211,7 @@ func EncodeBatch(db Storage, addr string) http.HandlerFunc {
 			logger.Log.Debug("error getting cookie from request")
 		}
 		if cookie == nil {
-			cookie2, ok := req.Context().Value("cookie").(*http.Cookie)
+			cookie2, ok := req.Context().Value(auth.CookieKey).(*http.Cookie)
 			if !ok {
 				logger.Log.Debug("error conversion cookie")
 			} else {

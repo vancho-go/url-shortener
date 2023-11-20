@@ -11,6 +11,11 @@ import (
 	"time"
 )
 
+type key int
+
+const (
+	CookieKey key = iota
+)
 const TokenExp = time.Hour * 24
 const SecretKey = "temp_secret_key"
 
@@ -44,7 +49,7 @@ func JWTMiddleware(next http.Handler) http.Handler {
 
 		http.SetCookie(res, cookieNew)
 
-		ctx := context.WithValue(req.Context(), "cookie", cookieNew)
+		ctx := context.WithValue(req.Context(), CookieKey, cookieNew)
 		next.ServeHTTP(res, req.WithContext(ctx))
 	})
 }
