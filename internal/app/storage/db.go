@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/vancho-go/url-shortener/internal/app/logger"
+	"github.com/vancho-go/url-shortener/internal/app/models"
 )
 
 type Database struct {
@@ -33,6 +34,7 @@ func CreateIfNotExists(db *sql.DB) error {
 	createTableQuery := `
 		CREATE TABLE IF NOT EXISTS urls (
 			id SERIAL PRIMARY KEY,
+			user_id VARCHAR NOT NULL,
 			shorten_url VARCHAR NOT NULL,
 			original_url VARCHAR NOT NULL,
 			UNIQUE (shorten_url),
@@ -46,21 +48,21 @@ func CreateIfNotExists(db *sql.DB) error {
 	return nil
 }
 
-func (db *Database) AddURL(ctx context.Context, originalURL, shortenURL string) error {
+func (db *Database) AddURL(ctx context.Context, originalURL, shortenURL, user_id string) error {
 	tx, err := db.DB.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	insertQuery := "INSERT INTO urls (shorten_url, original_url) VALUES ($1, $2)"
+	insertQuery := "INSERT INTO urls (shorten_url, original_url, user_id) VALUES ($1, $2, $3)"
 	stmt, err := db.DB.PrepareContext(ctx, insertQuery)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.ExecContext(ctx, shortenURL, originalURL)
+	_, err = stmt.ExecContext(ctx, shortenURL, originalURL, user_id)
 	if err != nil {
 		return err
 	}
@@ -84,6 +86,30 @@ func (db *Database) GetURL(ctx context.Context, shortenURL string) (string, erro
 	}
 	return originalURL, nil
 
+}
+
+func (db *Database) GetUserURLs(ctx context.Context, userID string) ([]models.APIUserURLResponse, error) {
+	selectQuery := "SELECT shorten_url, original_url FROM urls WHERE user_id=$1"
+	stmt, err := db.DB.Prepare(selectQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.QueryContext(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	var userURLs []models.APIUserURLResponse
+	for rows.Next() {
+		var userURL models.APIUserURLResponse
+		err = rows.Scan(&userURL.ShortenURL, &userURL.OriginalURL)
+		if err != nil {
+			return nil, err
+		}
+		userURLs = append(userURLs, userURL)
+	}
+	return userURLs, nil
 }
 
 func (db *Database) GetShortenURLByOriginal(ctx context.Context, originalURL string) (string, error) {

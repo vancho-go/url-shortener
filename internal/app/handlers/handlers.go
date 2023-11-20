@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/vancho-go/url-shortener/internal/app/auth"
 	"github.com/vancho-go/url-shortener/internal/app/base62"
 	"github.com/vancho-go/url-shortener/internal/app/logger"
 	"github.com/vancho-go/url-shortener/internal/app/models"
@@ -21,10 +22,11 @@ import (
 var ErrUnique = errors.New("original URL already exists")
 
 type Storage interface {
-	AddURL(context.Context, string, string) error
+	AddURL(context.Context, string, string, string) error
 	GetURL(context.Context, string) (string, error)
 	IsShortenUnique(context.Context, string) bool
 	Close() error
+	GetUserURLs(context.Context, string) ([]models.APIUserURLResponse, error)
 }
 
 func DecodeURL(db Storage) http.HandlerFunc {
@@ -45,6 +47,18 @@ func DecodeURL(db Storage) http.HandlerFunc {
 
 func EncodeURL(db Storage, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
+		cookie, err := req.Cookie("AuthToken")
+		if err != nil {
+			logger.Log.Debug("error getting cookie from request")
+		}
+		if cookie == nil {
+			cookie = req.Context().Value("cookie").(*http.Cookie)
+		}
+		userID, err := auth.GetUserId(cookie.Value)
+		if err != nil {
+			logger.Log.Debug("something wrong with user_id")
+		}
+
 		originalURL, err := io.ReadAll(req.Body)
 		if err != nil {
 			http.Error(res, "No such shorten URL", http.StatusBadRequest)
@@ -64,7 +78,14 @@ func EncodeURL(db Storage, addr string) http.HandlerFunc {
 
 		ctx, cancel2 := context.WithTimeout(req.Context(), 1*time.Second)
 		defer cancel2()
-		err = db.AddURL(ctx, string(originalURL), shortenURL)
+
+		if err != nil {
+			logger.Log.Error("something wrong with user_id", zap.Error(err))
+			http.Error(res, "Bad user_id", http.StatusUnauthorized)
+			return
+		}
+
+		err = db.AddURL(ctx, string(originalURL), shortenURL, userID)
 		if err != nil {
 			if !isUniqueViolationError(err) {
 				http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
@@ -97,6 +118,15 @@ func EncodeURL(db Storage, addr string) http.HandlerFunc {
 
 func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
+		cookie, err := req.Cookie("AuthToken")
+		if err != nil {
+			logger.Log.Error("error getting cookie", zap.Error(err))
+		}
+		userID, err := auth.GetUserId(cookie.Value)
+		if err != nil {
+			logger.Log.Error("something wrong with user_id", zap.Error(err))
+		}
+
 		var request models.APIShortenRequest
 		dec := json.NewDecoder(req.Body)
 		if err := dec.Decode(&request); err != nil {
@@ -120,7 +150,7 @@ func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 
 		ctx, cancel2 := context.WithTimeout(req.Context(), 1*time.Second)
 		defer cancel2()
-		err := db.AddURL(ctx, originalURL, shortenURL)
+		err = db.AddURL(ctx, originalURL, shortenURL, userID)
 		if err != nil {
 			if !isUniqueViolationError(err) {
 				http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
@@ -161,6 +191,14 @@ func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 
 func EncodeBatch(db Storage, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
+		cookie, err := req.Cookie("AuthToken")
+		if err != nil {
+			logger.Log.Error("error getting cookie", zap.Error(err))
+		}
+		userID, err := auth.GetUserId(cookie.Value)
+		if err != nil {
+			logger.Log.Error("something wrong with user_id", zap.Error(err))
+		}
 		var request []models.APIBatchRequest
 		dec := json.NewDecoder(req.Body)
 		if err := dec.Decode(&request); err != nil {
@@ -185,7 +223,7 @@ func EncodeBatch(db Storage, addr string) http.HandlerFunc {
 
 			ctx, cancel2 := context.WithTimeout(req.Context(), 1*time.Second)
 			defer cancel2()
-			err := db.AddURL(ctx, originalURL, shortenURL)
+			err := db.AddURL(ctx, originalURL, shortenURL, userID)
 			if err != nil {
 				http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
 				return
@@ -197,6 +235,43 @@ func EncodeBatch(db Storage, addr string) http.HandlerFunc {
 		res.WriteHeader(http.StatusCreated)
 		enc := json.NewEncoder(res)
 		if err := enc.Encode(response); err != nil {
+			logger.Log.Error("error encoding response", zap.Error(err))
+			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
+			return
+		}
+	}
+}
+
+func GetUserURLs(db Storage, addr string) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		cookie, err := req.Cookie("AuthToken")
+		if err != nil {
+			logger.Log.Debug("error getting cookie", zap.Error(err))
+			http.Error(res, "No cookie presented", http.StatusUnauthorized)
+			return
+		}
+		userID, err := auth.GetUserId(cookie.Value)
+		if err != nil {
+			logger.Log.Debug("something wrong with user_id", zap.Error(err))
+			http.Error(res, "Bad user_id", http.StatusUnauthorized)
+			return
+		}
+		ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
+		defer cancel()
+		userURLs, err := db.GetUserURLs(ctx, userID)
+		if err != nil {
+			logger.Log.Error("error getting user urls", zap.Error(err))
+			http.Error(res, "Error getting urls", http.StatusBadRequest)
+			return
+		}
+		if len(userURLs) == 0 {
+			res.WriteHeader(http.StatusNoContent)
+			return
+		}
+		res.Header().Set("Content-Type", "application/json")
+		res.WriteHeader(http.StatusOK)
+		enc := json.NewEncoder(res)
+		if err := enc.Encode(userURLs); err != nil {
 			logger.Log.Error("error encoding response", zap.Error(err))
 			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
 			return

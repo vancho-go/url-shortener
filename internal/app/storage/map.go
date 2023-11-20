@@ -3,11 +3,12 @@ package storage
 import (
 	"context"
 	"errors"
+	"github.com/vancho-go/url-shortener/internal/app/models"
 )
 
 type MapDB map[string]string
 
-func (storage MapDB) AddURL(ctx context.Context, originalURL, shortenURL string) error {
+func (storage MapDB) AddURL(ctx context.Context, originalURL, shortenURL, user_id string) error {
 	storage[shortenURL] = originalURL
 	return nil
 }
@@ -23,6 +24,9 @@ func (storage MapDB) GetURL(ctx context.Context, shortenURL string) (string, err
 func (storage MapDB) IsShortenUnique(ctx context.Context, shortenURL string) bool {
 	_, ok := storage[shortenURL]
 	return !ok
+}
+func (storage MapDB) GetUserURLs(ctx context.Context, userID string) ([]models.APIUserURLResponse, error) {
+	return nil, errors.New("method not implemented for this type of storage")
 }
 
 func (storage MapDB) Close() error {

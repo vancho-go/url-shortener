@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"github.com/go-chi/chi/v5"
+	"github.com/vancho-go/url-shortener/internal/app/auth"
 	"github.com/vancho-go/url-shortener/internal/app/compress"
 	"github.com/vancho-go/url-shortener/internal/app/config"
 	"github.com/vancho-go/url-shortener/internal/app/handlers"
@@ -66,13 +67,22 @@ func main() {
 
 	logger.Log.Info("Running server", zap.String("address", configuration.ServerHost))
 	r := chi.NewRouter()
-	r.Get("/ping", logger.RequestLogger((handlers.CheckDBConnection(dbInstance))))
-	r.Get("/{shortenURL}", logger.RequestLogger(compressMiddleware(handlers.DecodeURL(dbInstance))))
-	r.Post("/", logger.RequestLogger(compressMiddleware(handlers.EncodeURL(dbInstance, configuration.BaseHost))))
+
+	r.Group(func(r chi.Router) {
+		r.Use(auth.JWTMiddleware)
+		r.Get("/ping", logger.RequestLogger((handlers.CheckDBConnection(dbInstance))))
+		r.Get("/{shortenURL}", logger.RequestLogger(compressMiddleware(handlers.DecodeURL(dbInstance))))
+		r.Post("/", logger.RequestLogger(compressMiddleware(handlers.EncodeURL(dbInstance, configuration.BaseHost))))
+	})
 
 	r.Route("/api", func(r chi.Router) {
-		r.Post("/shorten", logger.RequestLogger(compressMiddleware(handlers.EncodeURLJSON(dbInstance, configuration.BaseHost))))
-		r.Post("/shorten/batch", logger.RequestLogger(compressMiddleware(handlers.EncodeBatch(dbInstance, configuration.BaseHost))))
+		r.Get("/user/urls", logger.RequestLogger(handlers.GetUserURLs(dbInstance, configuration.BaseHost)))
+		r.Group(func(r chi.Router) {
+			r.Use(auth.JWTMiddleware)
+			r.Post("/shorten", logger.RequestLogger(compressMiddleware(handlers.EncodeURLJSON(dbInstance, configuration.BaseHost))))
+			r.Post("/shorten/batch", logger.RequestLogger(compressMiddleware(handlers.EncodeBatch(dbInstance, configuration.BaseHost))))
+		})
+
 	})
 
 	err = http.ListenAndServe(configuration.ServerHost, r)
