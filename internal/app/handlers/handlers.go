@@ -287,6 +287,9 @@ func GetUserURLs(db Storage, addr string) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
 		defer cancel()
 		userURLs, err := db.GetUserURLs(ctx, userID)
+		for i := 0; i < len(userURLs); i++ {
+			userURLs[i].ShortenURL = addr + "/" + userURLs[i].ShortenURL
+		}
 		if err != nil {
 			logger.Log.Error("error getting user urls", zap.Error(err))
 			http.Error(res, "Error getting urls", http.StatusBadRequest)

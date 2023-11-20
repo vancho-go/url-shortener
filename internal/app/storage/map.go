@@ -8,7 +8,7 @@ import (
 
 type MapDB map[string]string
 
-func (storage MapDB) AddURL(ctx context.Context, originalURL, shortenURL, user_id string) error {
+func (storage MapDB) AddURL(ctx context.Context, originalURL, shortenURL, userID string) error {
 	storage[shortenURL] = originalURL
 	return nil
 }

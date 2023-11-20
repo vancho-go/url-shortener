@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-const Token_exp = time.Hour * 24
-const Secret_key = "temp_secret_key"
+const TokenExp = time.Hour * 24
+const SecretKey = "temp_secret_key"
 
 type Claims struct {
 	jwt.RegisteredClaims
@@ -37,7 +37,7 @@ func JWTMiddleware(next http.Handler) http.Handler {
 		cookieNew := &http.Cookie{
 			Name:     "AuthToken",
 			Value:    jwtToken,
-			Expires:  time.Now().Add(Token_exp),
+			Expires:  time.Now().Add(TokenExp),
 			HttpOnly: true,
 			Path:     "/",
 		}
@@ -55,7 +55,7 @@ func generateUserID() string {
 
 func generateJWTToken(userID string) (string, error) {
 	// создаём новый токен с алгоритмом подписи HS256 и утверждениями — Claims
-	expirationTime := time.Now().Add(Token_exp)
+	expirationTime := time.Now().Add(TokenExp)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			// когда создан токен
@@ -64,7 +64,7 @@ func generateJWTToken(userID string) (string, error) {
 		// собственное утверждение
 		UserID: userID,
 	})
-	return token.SignedString([]byte(Secret_key))
+	return token.SignedString([]byte(SecretKey))
 }
 
 func IsTokenValid(tokenString string) bool {
@@ -72,7 +72,7 @@ func IsTokenValid(tokenString string) bool {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
-		return []byte(Secret_key), nil
+		return []byte(SecretKey), nil
 	})
 	if err != nil {
 		return false
@@ -86,7 +86,7 @@ func GetUserID(tokenString string) (string, error) {
 	}
 	claims := &Claims{}
 	_, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
-		return []byte(Secret_key), nil
+		return []byte(SecretKey), nil
 	})
 	if err != nil {
 		return "", fmt.Errorf("error parsing token")
