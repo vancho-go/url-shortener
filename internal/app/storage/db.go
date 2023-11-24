@@ -97,16 +97,17 @@ func (db *Database) GetUserURLs(ctx context.Context, userID string) ([]models.AP
 	defer stmt.Close()
 
 	rows, err := stmt.QueryContext(ctx, userID)
+
+	errR := rows.Err()
+	if errR != nil {
+		return nil, errR
+	}
 	defer rows.Close()
 
 	if err != nil {
 		return nil, err
 	}
 
-	err = rows.Err()
-	if err != nil {
-		return nil, err
-	}
 	var userURLs []models.APIUserURLResponse
 	for rows.Next() {
 		var userURL models.APIUserURLResponse
