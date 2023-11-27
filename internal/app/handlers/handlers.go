@@ -39,14 +39,13 @@ func DecodeURL(db Storage) http.HandlerFunc {
 			res.WriteHeader(http.StatusTemporaryRedirect)
 			return
 		}
-		if err != nil {
-			if errors.Is(err, storage.ErrDeletedURL) {
-				res.WriteHeader(http.StatusGone)
-				return
-			}
-			http.Error(res, "No such shorten URL", http.StatusBadRequest)
+
+		if errors.Is(err, storage.ErrDeletedURL) {
+			res.WriteHeader(http.StatusGone)
 			return
 		}
+		http.Error(res, "No such shorten URL", http.StatusBadRequest)
+		return
 
 	}
 }
