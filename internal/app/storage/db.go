@@ -3,12 +3,15 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/vancho-go/url-shortener/internal/app/logger"
 	"github.com/vancho-go/url-shortener/internal/app/models"
 	"go.uber.org/zap"
 	"sync"
 )
+
+var ErrDeletedURL = errors.New("URL was deleted")
 
 type Database struct {
 	DB *sql.DB
@@ -73,7 +76,7 @@ func (db *Database) AddURL(ctx context.Context, originalURL, shortenURL, userID 
 }
 
 func (db *Database) GetURL(ctx context.Context, shortenURL string) (string, error) {
-	selectQuery := "SELECT original_url FROM urls WHERE shorten_url=$1"
+	selectQuery := "SELECT original_url, deleted FROM urls WHERE shorten_url=$1"
 	stmt, err := db.DB.Prepare(selectQuery)
 	if err != nil {
 		return "", err
@@ -83,7 +86,11 @@ func (db *Database) GetURL(ctx context.Context, shortenURL string) (string, erro
 	row := stmt.QueryRowContext(ctx, shortenURL)
 
 	var originalURL string
-	err = row.Scan(&originalURL)
+	var deleted bool
+	err = row.Scan(&originalURL, &deleted)
+	if deleted {
+		return "", ErrDeletedURL
+	}
 	if err != nil {
 		return "", err
 	}

@@ -19,8 +19,6 @@ import (
 	"time"
 )
 
-var ErrUnique = errors.New("original URL already exists")
-
 type Storage interface {
 	AddURL(context.Context, string, string, string) error
 	GetURL(context.Context, string) (string, error)
@@ -36,12 +34,19 @@ func DecodeURL(db Storage) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
 		defer cancel()
 		originalURL, err := db.GetURL(ctx, shortenURL)
+		if err == nil {
+			res.Header().Set("Location", originalURL)
+			res.WriteHeader(http.StatusTemporaryRedirect)
+			return
+		}
 		if err != nil {
+			if errors.Is(err, storage.ErrDeletedURL) {
+				res.WriteHeader(http.StatusGone)
+				return
+			}
 			http.Error(res, "No such shorten URL", http.StatusBadRequest)
 			return
 		}
-		res.Header().Set("Location", originalURL)
-		res.WriteHeader(http.StatusTemporaryRedirect)
 
 	}
 }
