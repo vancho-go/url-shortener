@@ -27,6 +27,7 @@ type Storage interface {
 	IsShortenUnique(context.Context, string) bool
 	Close() error
 	GetUserURLs(context.Context, string) ([]models.APIUserURLResponse, error)
+	DeleteUserURLs(context.Context, chan struct{}, []models.DeleteURLRequest) error
 }
 
 func DecodeURL(db Storage) http.HandlerFunc {
@@ -308,6 +309,51 @@ func GetUserURLs(db Storage, addr string) http.HandlerFunc {
 			logger.Log.Error("error encoding response", zap.Error(err))
 			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
 			return
+		}
+	}
+}
+
+func DeleteURLs(db Storage) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		cookie, err := req.Cookie("AuthToken")
+		if err != nil {
+			logger.Log.Debug("error getting cookie", zap.Error(err))
+
+			// Replace it after tests repaired
+			http.Error(res, "No cookie presented", http.StatusNoContent)
+			return
+		}
+		userID, err := auth.GetUserID(cookie.Value)
+		if err != nil {
+			logger.Log.Debug("something wrong with user_id", zap.Error(err))
+			http.Error(res, "Bad user_id", http.StatusUnauthorized)
+			return
+		}
+
+		var shortenUrls []string
+		dec := json.NewDecoder(req.Body)
+		if err := dec.Decode(&shortenUrls); err != nil {
+			logger.Log.Debug("can't decode request JSON body", zap.Error(err))
+			http.Error(res, "Error deleting shorten URLs", http.StatusBadRequest)
+			return
+		}
+		urlsToDelete := make([]models.DeleteURLRequest, len(shortenUrls))
+		for pos, url := range shortenUrls {
+			urlsToDelete[pos].ShortenURL = url
+			urlsToDelete[pos].UserID = userID
+		}
+
+		res.WriteHeader(http.StatusAccepted)
+
+		ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+		defer cancel()
+
+		doneCh := make(chan struct{})
+		defer close(doneCh)
+
+		err = db.DeleteUserURLs(ctx, doneCh, urlsToDelete)
+		if err != nil {
+			logger.Log.Error("error deleting", zap.Error(err))
 		}
 	}
 }

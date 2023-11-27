@@ -57,6 +57,10 @@ func (ed *EncoderDecoder) GetUserURLs(ctx context.Context, userID string) ([]mod
 	return nil, errors.New("method not implemented for this type of storage")
 }
 
+func (ed *EncoderDecoder) DeleteUserURLs(ctx context.Context, doneCh chan struct{}, urlsToDelete []models.DeleteURLRequest) error {
+	return errors.New("method not implemented for this type of storage")
+}
+
 func (ed *EncoderDecoder) AddURL(ctx context.Context, originalURL, shortenURL, userID string) error {
 	data := &Data{ShortURL: shortenURL, OriginalURL: originalURL}
 	ed.mu.Lock()

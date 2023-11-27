@@ -77,6 +77,7 @@ func main() {
 
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/user/urls", logger.RequestLogger(handlers.GetUserURLs(dbInstance, configuration.BaseHost)))
+		r.Delete("/user/urls", logger.RequestLogger(handlers.DeleteURLs(dbInstance)))
 		r.Group(func(r chi.Router) {
 			r.Use(auth.JWTMiddleware)
 			r.Post("/shorten", logger.RequestLogger(compressMiddleware(handlers.EncodeURLJSON(dbInstance, configuration.BaseHost))))

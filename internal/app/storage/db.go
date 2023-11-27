@@ -6,6 +6,8 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/vancho-go/url-shortener/internal/app/logger"
 	"github.com/vancho-go/url-shortener/internal/app/models"
+	"go.uber.org/zap"
+	"sync"
 )
 
 type Database struct {
@@ -37,6 +39,7 @@ func CreateIfNotExists(db *sql.DB) error {
 			user_id VARCHAR NOT NULL,
 			shorten_url VARCHAR NOT NULL,
 			original_url VARCHAR NOT NULL,
+			deleted BOOLEAN DEFAULT FALSE NOT NULL,
 			UNIQUE (shorten_url),
 		    UNIQUE (original_url)
 		);`
@@ -118,6 +121,128 @@ func (db *Database) GetUserURLs(ctx context.Context, userID string) ([]models.AP
 		userURLs = append(userURLs, userURL)
 	}
 	return userURLs, nil
+}
+
+func (db *Database) DeleteUserURLs(ctx context.Context, doneCh chan struct{}, urlsToDelete []models.DeleteURLRequest) error {
+	// Получаем канал с данными
+	inputCh := generator(doneCh, urlsToDelete)
+
+	// Отдаем канал с данными, генерируем 5 воркеров
+	// которые будут делать запрос на удаление из БД
+	// и получаем каналы ответов этих воркеров
+	channels := fanOut(ctx, doneCh, inputCh, db)
+
+	// Отправляем полученные каналы ответов, чтобы их все обработать в одном месте
+	deleteResCh := fanIn(doneCh, channels...)
+
+	for err := range deleteResCh {
+		if err != nil {
+			logger.Log.Error("error deleting row", zap.Error(err))
+		}
+	}
+	return nil
+}
+
+func generator(doneCh chan struct{}, input []models.DeleteURLRequest) chan models.DeleteURLRequest {
+	inputCh := make(chan models.DeleteURLRequest)
+
+	go func() {
+		defer close(inputCh)
+
+		for _, deleteURL := range input {
+			select {
+			case <-doneCh:
+				return
+			case inputCh <- deleteURL:
+			}
+		}
+	}()
+
+	return inputCh
+}
+
+func urlDeleter(ctx context.Context, doneCh chan struct{}, inputCh chan models.DeleteURLRequest, db *Database) chan error {
+	deleteRes := make(chan error)
+
+	go func() {
+		defer close(deleteRes)
+
+		for url := range inputCh {
+			err := db.deleteUserURL(ctx, url)
+
+			select {
+			case <-doneCh:
+				return
+			case deleteRes <- err:
+			}
+		}
+	}()
+	return deleteRes
+}
+
+func fanOut(ctx context.Context, doneCh chan struct{}, inputCh chan models.DeleteURLRequest, db *Database) []chan error {
+	numWorkers := 5
+	channels := make([]chan error, numWorkers)
+
+	for i := 0; i < numWorkers; i++ {
+		deleteResCh := urlDeleter(ctx, doneCh, inputCh, db)
+		channels[i] = deleteResCh
+	}
+	return channels
+}
+
+func fanIn(doneCh chan struct{}, resultChs ...chan error) chan error {
+	finalCh := make(chan error)
+
+	var wg sync.WaitGroup
+
+	for _, ch := range resultChs {
+		ch2 := ch
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			for data := range ch2 {
+				select {
+				case <-doneCh:
+					return
+				case finalCh <- data:
+				}
+			}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(finalCh)
+	}()
+	return finalCh
+}
+
+func (db *Database) deleteUserURL(ctx context.Context, urlToDelete models.DeleteURLRequest) error {
+	tx, err := db.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare("UPDATE urls SET deleted = true WHERE user_id = $1 AND shorten_url = $2")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(ctx, urlToDelete.UserID, urlToDelete.ShortenURL)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (db *Database) GetShortenURLByOriginal(ctx context.Context, originalURL string) (string, error) {
