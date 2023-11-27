@@ -345,7 +345,7 @@ func DeleteURLs(db Storage) http.HandlerFunc {
 
 		res.WriteHeader(http.StatusAccepted)
 
-		ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+		ctx, cancel := context.WithTimeout(req.Context(), 60*time.Second)
 		defer cancel()
 
 		doneCh := make(chan struct{})
