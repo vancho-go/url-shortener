@@ -45,8 +45,6 @@ func DecodeURL(db Storage) http.HandlerFunc {
 			return
 		}
 		http.Error(res, "No such shorten URL", http.StatusBadRequest)
-		return
-
 	}
 }
 
