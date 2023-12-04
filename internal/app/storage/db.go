@@ -139,7 +139,7 @@ func (db *Database) DeleteUserURLs(ctx context.Context, urlsToDelete []models.De
 	// Отдаем канал с данными, генерируем 5 воркеров
 	// которые будут делать запрос на удаление из БД
 	// и получаем каналы ответов этих воркеров
-	channels := fanOut5Deleters(ctx, inputCh, db)
+	channels := fanOutDeleters(ctx, inputCh, db)
 
 	// Отправляем полученные каналы ответов, чтобы их все обработать в одном месте
 	deleteResCh := fanIn(ctx, channels...)
