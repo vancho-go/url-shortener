@@ -57,7 +57,7 @@ func (ed *EncoderDecoder) GetUserURLs(ctx context.Context, userID string) ([]mod
 	return nil, errors.New("method not implemented for this type of storage")
 }
 
-func (ed *EncoderDecoder) DeleteUserURLs(ctx context.Context, doneCh chan struct{}, urlsToDelete []models.DeleteURLRequest) error {
+func (ed *EncoderDecoder) DeleteUserURLs(ctx context.Context, urlsToDelete []models.DeleteURLRequest) error {
 	return errors.New("method not implemented for this type of storage")
 }
 

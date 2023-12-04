@@ -108,9 +108,8 @@ func (db *Database) GetUserURLs(ctx context.Context, userID string) ([]models.AP
 
 	rows, err := stmt.QueryContext(ctx, userID)
 
-	errR := rows.Err()
-	if errR != nil {
-		return nil, errR
+	if rows.Err() != nil {
+		return nil, rows.Err()
 	}
 	defer rows.Close()
 
@@ -127,20 +126,23 @@ func (db *Database) GetUserURLs(ctx context.Context, userID string) ([]models.AP
 		}
 		userURLs = append(userURLs, userURL)
 	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
 	return userURLs, nil
 }
 
-func (db *Database) DeleteUserURLs(ctx context.Context, doneCh chan struct{}, urlsToDelete []models.DeleteURLRequest) error {
+func (db *Database) DeleteUserURLs(ctx context.Context, urlsToDelete []models.DeleteURLRequest) error {
 	// Получаем канал с данными
-	inputCh := generator(doneCh, urlsToDelete)
+	inputCh := generateDeleteURLChan(ctx, urlsToDelete)
 
 	// Отдаем канал с данными, генерируем 5 воркеров
 	// которые будут делать запрос на удаление из БД
 	// и получаем каналы ответов этих воркеров
-	channels := fanOut(ctx, doneCh, inputCh, db)
+	channels := fanOut5Deleters(ctx, inputCh, db)
 
 	// Отправляем полученные каналы ответов, чтобы их все обработать в одном месте
-	deleteResCh := fanIn(doneCh, channels...)
+	deleteResCh := fanIn(ctx, channels...)
 
 	for err := range deleteResCh {
 		if err != nil {
@@ -150,7 +152,8 @@ func (db *Database) DeleteUserURLs(ctx context.Context, doneCh chan struct{}, ur
 	return nil
 }
 
-func generator(doneCh chan struct{}, input []models.DeleteURLRequest) chan models.DeleteURLRequest {
+// ex generator
+func generateDeleteURLChan(ctx context.Context, input []models.DeleteURLRequest) chan models.DeleteURLRequest {
 	inputCh := make(chan models.DeleteURLRequest)
 
 	go func() {
@@ -158,7 +161,7 @@ func generator(doneCh chan struct{}, input []models.DeleteURLRequest) chan model
 
 		for _, deleteURL := range input {
 			select {
-			case <-doneCh:
+			case <-ctx.Done():
 				return
 			case inputCh <- deleteURL:
 			}
@@ -168,7 +171,7 @@ func generator(doneCh chan struct{}, input []models.DeleteURLRequest) chan model
 	return inputCh
 }
 
-func urlDeleter(ctx context.Context, doneCh chan struct{}, inputCh chan models.DeleteURLRequest, db *Database) chan error {
+func urlDeleter(ctx context.Context, inputCh chan models.DeleteURLRequest, db *Database) chan error {
 	deleteRes := make(chan error)
 
 	go func() {
@@ -178,7 +181,7 @@ func urlDeleter(ctx context.Context, doneCh chan struct{}, inputCh chan models.D
 			err := db.deleteUserURL(ctx, url)
 
 			select {
-			case <-doneCh:
+			case <-ctx.Done():
 				return
 			case deleteRes <- err:
 			}
@@ -187,18 +190,18 @@ func urlDeleter(ctx context.Context, doneCh chan struct{}, inputCh chan models.D
 	return deleteRes
 }
 
-func fanOut(ctx context.Context, doneCh chan struct{}, inputCh chan models.DeleteURLRequest, db *Database) []chan error {
+func fanOut5Deleters(ctx context.Context, inputCh chan models.DeleteURLRequest, db *Database) []chan error {
 	numWorkers := 5
 	channels := make([]chan error, numWorkers)
 
 	for i := 0; i < numWorkers; i++ {
-		deleteResCh := urlDeleter(ctx, doneCh, inputCh, db)
+		deleteResCh := urlDeleter(ctx, inputCh, db)
 		channels[i] = deleteResCh
 	}
 	return channels
 }
 
-func fanIn(doneCh chan struct{}, resultChs ...chan error) chan error {
+func fanIn(ctx context.Context, resultChs ...chan error) chan error {
 	finalCh := make(chan error)
 
 	var wg sync.WaitGroup
@@ -212,7 +215,7 @@ func fanIn(doneCh chan struct{}, resultChs ...chan error) chan error {
 
 			for data := range ch2 {
 				select {
-				case <-doneCh:
+				case <-ctx.Done():
 					return
 				case finalCh <- data:
 				}

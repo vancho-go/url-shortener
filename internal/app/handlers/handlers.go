@@ -25,7 +25,7 @@ type Storage interface {
 	IsShortenUnique(context.Context, string) bool
 	Close() error
 	GetUserURLs(context.Context, string) ([]models.APIUserURLResponse, error)
-	DeleteUserURLs(context.Context, chan struct{}, []models.DeleteURLRequest) error
+	DeleteUserURLs(context.Context, []models.DeleteURLRequest) error
 }
 
 func DecodeURL(db Storage) http.HandlerFunc {
@@ -50,24 +50,16 @@ func DecodeURL(db Storage) http.HandlerFunc {
 
 func EncodeURL(db Storage, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		cookie, err := req.Cookie("AuthToken")
+		cookie, err := getCookie(req)
 		if err != nil {
-			logger.Log.Debug("error getting cookie from request")
+			logger.Log.Debug("no cookie in request, got from context")
 		}
-		if cookie == nil {
-			cookie2, ok := req.Context().Value(auth.CookieKey).(*http.Cookie)
-			if !ok {
-				logger.Log.Debug("error conversion cookie")
-			} else {
-				cookie = cookie2
-			}
 
-		}
 		var userID string
 		if cookie != nil {
 			userID, err = auth.GetUserID(cookie.Value)
 			if err != nil {
-				logger.Log.Debug("something wrong with user_id")
+				logger.Log.Warn("something wrong with user_id")
 			}
 		}
 
@@ -124,31 +116,23 @@ func EncodeURL(db Storage, addr string) http.HandlerFunc {
 
 func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		cookie, err := req.Cookie("AuthToken")
+		cookie, err := getCookie(req)
 		if err != nil {
-			logger.Log.Debug("error getting cookie from request")
+			logger.Log.Debug("no cookie in request, got from context")
 		}
-		if cookie == nil {
-			cookie2, ok := req.Context().Value(auth.CookieKey).(*http.Cookie)
-			if !ok {
-				logger.Log.Debug("error conversion cookie")
-			} else {
-				cookie = cookie2
-			}
 
-		}
 		var userID string
 		if cookie != nil {
 			userID, err = auth.GetUserID(cookie.Value)
 			if err != nil {
-				logger.Log.Debug("something wrong with user_id")
+				logger.Log.Warn("something wrong with user_id")
 			}
 		}
 
 		var request models.APIShortenRequest
 		dec := json.NewDecoder(req.Body)
 		if err := dec.Decode(&request); err != nil {
-			logger.Log.Debug("can't decode request JSON body", zap.Error(err))
+			logger.Log.Warn("can't decode request JSON body", zap.Error(err))
 			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
 			return
 		}
@@ -209,31 +193,23 @@ func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 
 func EncodeBatch(db Storage, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		cookie, err := req.Cookie("AuthToken")
+		cookie, err := getCookie(req)
 		if err != nil {
-			logger.Log.Debug("error getting cookie from request")
+			logger.Log.Debug("no cookie in request, got from context")
 		}
-		if cookie == nil {
-			cookie2, ok := req.Context().Value(auth.CookieKey).(*http.Cookie)
-			if !ok {
-				logger.Log.Debug("error conversion cookie")
-			} else {
-				cookie = cookie2
-			}
 
-		}
 		var userID string
 		if cookie != nil {
 			userID, err = auth.GetUserID(cookie.Value)
 			if err != nil {
-				logger.Log.Debug("something wrong with user_id")
+				logger.Log.Warn("something wrong with user_id")
 			}
 		}
 
 		var request []models.APIBatchRequest
 		dec := json.NewDecoder(req.Body)
 		if err := dec.Decode(&request); err != nil {
-			logger.Log.Debug("can't decode request JSON body", zap.Error(err))
+			logger.Log.Warn("can't decode request JSON body", zap.Error(err))
 			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
 			return
 		}
@@ -285,25 +261,29 @@ func GetUserURLs(db Storage, addr string) http.HandlerFunc {
 		}
 		userID, err := auth.GetUserID(cookie.Value)
 		if err != nil {
-			logger.Log.Debug("something wrong with user_id", zap.Error(err))
+			logger.Log.Warn("something wrong with user_id", zap.Error(err))
 			http.Error(res, "Bad user_id", http.StatusUnauthorized)
 			return
 		}
 		ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
 		defer cancel()
 		userURLs, err := db.GetUserURLs(ctx, userID)
+
+		if len(userURLs) == 0 {
+			res.WriteHeader(http.StatusNoContent)
+			return
+		}
+
 		for i := 0; i < len(userURLs); i++ {
 			userURLs[i].ShortenURL = addr + "/" + userURLs[i].ShortenURL
 		}
+
 		if err != nil {
 			logger.Log.Error("error getting user urls", zap.Error(err))
 			http.Error(res, "Error getting urls", http.StatusBadRequest)
 			return
 		}
-		if len(userURLs) == 0 {
-			res.WriteHeader(http.StatusNoContent)
-			return
-		}
+
 		res.Header().Set("Content-Type", "application/json")
 		res.WriteHeader(http.StatusOK)
 		enc := json.NewEncoder(res)
@@ -327,7 +307,7 @@ func DeleteURLs(db Storage) http.HandlerFunc {
 		}
 		userID, err := auth.GetUserID(cookie.Value)
 		if err != nil {
-			logger.Log.Debug("something wrong with user_id", zap.Error(err))
+			logger.Log.Warn("something wrong with user_id", zap.Error(err))
 			http.Error(res, "Bad user_id", http.StatusUnauthorized)
 			return
 		}
@@ -335,7 +315,7 @@ func DeleteURLs(db Storage) http.HandlerFunc {
 		var shortenUrls []string
 		dec := json.NewDecoder(req.Body)
 		if err := dec.Decode(&shortenUrls); err != nil {
-			logger.Log.Debug("can't decode request JSON body", zap.Error(err))
+			logger.Log.Warn("can't decode request JSON body", zap.Error(err))
 			http.Error(res, "Error deleting shorten URLs", http.StatusBadRequest)
 			return
 		}
@@ -353,7 +333,7 @@ func DeleteURLs(db Storage) http.HandlerFunc {
 		doneCh := make(chan struct{})
 		defer close(doneCh)
 
-		err = db.DeleteUserURLs(ctx, doneCh, urlsToDelete)
+		err = db.DeleteUserURLs(ctx, urlsToDelete)
 		if err != nil {
 			logger.Log.Error("error deleting", zap.Error(err))
 		}
@@ -382,4 +362,19 @@ func CheckDBConnection(store Storage) http.HandlerFunc {
 func isUniqueViolationError(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation
+}
+
+func getCookie(req *http.Request) (*http.Cookie, error) {
+	cookie, err := req.Cookie("AuthToken")
+
+	if cookie == nil {
+		cookie2, ok := req.Context().Value(auth.CookieKey).(*http.Cookie)
+		if !ok {
+			logger.Log.Debug("error conversion cookie")
+		} else {
+			cookie = cookie2
+		}
+
+	}
+	return cookie, err
 }

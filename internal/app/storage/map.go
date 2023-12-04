@@ -29,7 +29,7 @@ func (storage MapDB) GetUserURLs(ctx context.Context, userID string) ([]models.A
 	return nil, errors.New("method not implemented for this type of storage")
 }
 
-func (storage MapDB) DeleteUserURLs(ctx context.Context, doneCh chan struct{}, urlsToDelete []models.DeleteURLRequest) error {
+func (storage MapDB) DeleteUserURLs(ctx context.Context, urlsToDelete []models.DeleteURLRequest) error {
 	return errors.New("method not implemented for this type of storage")
 }
 
