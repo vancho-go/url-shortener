@@ -190,7 +190,7 @@ func urlDeleter(ctx context.Context, inputCh chan models.DeleteURLRequest, db *D
 	return deleteRes
 }
 
-func fanOut5Deleters(ctx context.Context, inputCh chan models.DeleteURLRequest, db *Database) []chan error {
+func fanOutDeleters(ctx context.Context, inputCh chan models.DeleteURLRequest, db *Database) []chan error {
 	numWorkers := 5
 	channels := make([]chan error, numWorkers)
 

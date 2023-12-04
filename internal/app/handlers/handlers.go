@@ -330,9 +330,6 @@ func DeleteURLs(db Storage) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(req.Context(), 60*time.Second)
 		defer cancel()
 
-		doneCh := make(chan struct{})
-		defer close(doneCh)
-
 		err = db.DeleteUserURLs(ctx, urlsToDelete)
 		if err != nil {
 			logger.Log.Error("error deleting", zap.Error(err))
