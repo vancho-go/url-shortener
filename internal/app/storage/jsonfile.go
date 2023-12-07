@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/vancho-go/url-shortener/internal/app/models"
 	"os"
 	"sync"
 )
@@ -52,7 +53,15 @@ func (ed *EncoderDecoder) Close() error {
 	return ed.file.Close()
 }
 
-func (ed *EncoderDecoder) AddURL(ctx context.Context, originalURL, shortenURL string) error {
+func (ed *EncoderDecoder) GetUserURLs(ctx context.Context, userID string) ([]models.APIUserURLResponse, error) {
+	return nil, errors.New("method not implemented for this type of storage")
+}
+
+func (ed *EncoderDecoder) DeleteUserURLs(ctx context.Context, urlsToDelete []models.DeleteURLRequest) error {
+	return errors.New("method not implemented for this type of storage")
+}
+
+func (ed *EncoderDecoder) AddURL(ctx context.Context, originalURL, shortenURL, userID string) error {
 	data := &Data{ShortURL: shortenURL, OriginalURL: originalURL}
 	ed.mu.Lock()
 	ed.storage[shortenURL] = originalURL
