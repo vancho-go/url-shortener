@@ -11,7 +11,6 @@ import (
 	"github.com/vancho-go/url-shortener/internal/app/storage"
 	"go.uber.org/zap"
 	"net/http"
-	"net/http/pprof"
 	_ "net/http/pprof"
 )
 
