@@ -21,6 +21,7 @@ import (
 
 type Storage interface {
 	AddURL(context.Context, string, string, string) error
+	AddURLs(context.Context, []models.APIBatchRequest, string) error
 	GetURL(context.Context, string) (string, error)
 	IsShortenUnique(context.Context, string) bool
 	Close() error
@@ -214,8 +215,11 @@ func EncodeBatch(db Storage, addr string) http.HandlerFunc {
 			return
 		}
 
+		var batch []models.APIBatchRequest
 		var response []models.APIBatchResponse
-		for _, url := range request {
+		const batchSize = 100
+
+		for i, url := range request {
 			originalURL := url.OriginalURL
 			if originalURL == "" {
 				continue
@@ -228,14 +232,25 @@ func EncodeBatch(db Storage, addr string) http.HandlerFunc {
 				shortenURL = base62.Base62Encode(rand.Uint64())
 			}
 
-			ctx, cancel2 := context.WithTimeout(req.Context(), 1*time.Second)
-			defer cancel2()
-			err := db.AddURL(ctx, originalURL, shortenURL, userID)
-			if err != nil {
-				http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
-				return
+			batch = append(batch, models.APIBatchRequest{
+				CorrelationID: url.CorrelationID,
+				OriginalURL:   originalURL,
+				ShortenURL:    shortenURL,
+			})
+
+			if len(batch) == batchSize || i == len(request)-1 {
+				ctx, cancel := context.WithTimeout(req.Context(), 5*time.Second)
+				defer cancel()
+				err := db.AddURLs(ctx, batch, userID)
+				if err != nil {
+					http.Error(res, "Error adding new shorten URLs", http.StatusBadRequest)
+					return
+				}
+				for _, b := range batch {
+					response = append(response, models.APIBatchResponse{CorrelationID: b.CorrelationID, ShortenURL: addr + "/" + b.ShortenURL})
+				}
+				batch = nil // Сбросить пакет после вставки.
 			}
-			response = append(response, models.APIBatchResponse{CorrelationID: url.CorrelationID, ShortenURL: addr + "/" + shortenURL})
 		}
 
 		res.Header().Set("Content-Type", "application/json")

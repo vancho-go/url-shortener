@@ -11,6 +11,8 @@ import (
 	"github.com/vancho-go/url-shortener/internal/app/storage"
 	"go.uber.org/zap"
 	"net/http"
+	"net/http/pprof"
+	_ "net/http/pprof"
 )
 
 const flagLogLevel = "Info"
@@ -87,8 +89,27 @@ func main() {
 
 	})
 
+	r.Mount("/debug", pprofHandler())
+
 	err = http.ListenAndServe(configuration.ServerHost, r)
 	if err != nil {
 		panic(errors.New("error starting server"))
 	}
+}
+
+func pprofHandler() http.Handler {
+	r := chi.NewRouter()
+	r.Get("/", pprof.Index)
+	r.Get("/cmdline", pprof.Cmdline)
+	r.Get("/profile", pprof.Profile)
+	r.Get("/symbol", pprof.Symbol)
+	r.Get("/trace", pprof.Trace)
+	r.Get("/allocs", pprof.Handler("allocs").ServeHTTP)
+	r.Get("/block", pprof.Handler("block").ServeHTTP)
+	r.Get("/goroutine", pprof.Handler("goroutine").ServeHTTP)
+	r.Get("/heap", pprof.Handler("heap").ServeHTTP)
+	r.Get("/mutex", pprof.Handler("mutex").ServeHTTP)
+	r.Get("/threadcreate", pprof.Handler("threadcreate").ServeHTTP)
+
+	return r
 }

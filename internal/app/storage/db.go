@@ -75,6 +75,35 @@ func (db *Database) AddURL(ctx context.Context, originalURL, shortenURL, userID 
 	return tx.Commit()
 }
 
+func (db *Database) AddURLs(ctx context.Context, urls []models.APIBatchRequest, userID string) error {
+	// Проверка на пустой слайс.
+	if len(urls) == 0 {
+		return nil
+	}
+
+	tx, err := db.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx, "INSERT INTO urls (shorten_url, original_url, user_id) VALUES ($1, $2, $3)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	// Для каждого URL в слайсе.
+	for _, url := range urls {
+		_, err = stmt.ExecContext(ctx, url.ShortenURL, url.OriginalURL, userID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
 func (db *Database) GetURL(ctx context.Context, shortenURL string) (string, error) {
 	selectQuery := "SELECT original_url, deleted FROM urls WHERE shorten_url=$1"
 	stmt, err := db.DB.Prepare(selectQuery)

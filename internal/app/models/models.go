@@ -11,6 +11,7 @@ type APIShortenResponse struct {
 type APIBatchRequest struct {
 	CorrelationID string `json:"correlation_id"`
 	OriginalURL   string `json:"original_url"`
+	ShortenURL    string `json:"shorten_url"`
 }
 
 type APIBatchResponse struct {

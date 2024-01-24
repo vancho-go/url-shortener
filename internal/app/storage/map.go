@@ -33,6 +33,10 @@ func (storage MapDB) DeleteUserURLs(ctx context.Context, urlsToDelete []models.D
 	return errors.New("method not implemented for this type of storage")
 }
 
+func (storage MapDB) AddURLs(ctx context.Context, urls []models.APIBatchRequest, userID string) error {
+	return errors.New("method not implemented for this type of storage")
+}
+
 func (storage MapDB) Close() error {
 	return nil
 }
