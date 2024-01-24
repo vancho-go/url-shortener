@@ -11,7 +11,7 @@ import (
 	"github.com/vancho-go/url-shortener/internal/app/storage"
 	"go.uber.org/zap"
 	"net/http"
-	_ "net/http/pprof"
+	"net/http/pprof"
 )
 
 const flagLogLevel = "Info"
