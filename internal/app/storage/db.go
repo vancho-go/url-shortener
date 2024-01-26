@@ -4,11 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"sync"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"go.uber.org/zap"
+
 	"github.com/vancho-go/url-shortener/internal/app/logger"
 	"github.com/vancho-go/url-shortener/internal/app/models"
-	"go.uber.org/zap"
-	"sync"
 )
 
 var ErrDeletedURL = errors.New("URL was deleted")

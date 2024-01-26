@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/vancho-go/url-shortener/internal/app/models"
 	"os"
 	"sync"
+
+	"github.com/vancho-go/url-shortener/internal/app/models"
 )
 
 type Data struct {

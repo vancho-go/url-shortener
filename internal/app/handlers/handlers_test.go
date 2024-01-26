@@ -1,14 +1,16 @@
 package handlers
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/vancho-go/url-shortener/internal/app/storage"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/vancho-go/url-shortener/internal/app/storage"
 )
 
 const addr = "localhost:8080"

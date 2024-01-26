@@ -2,16 +2,18 @@ package main
 
 import (
 	"errors"
+	"net/http"
+	"net/http/pprof"
+
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
+
 	"github.com/vancho-go/url-shortener/internal/app/auth"
 	"github.com/vancho-go/url-shortener/internal/app/compress"
 	"github.com/vancho-go/url-shortener/internal/app/config"
 	"github.com/vancho-go/url-shortener/internal/app/handlers"
 	"github.com/vancho-go/url-shortener/internal/app/logger"
 	"github.com/vancho-go/url-shortener/internal/app/storage"
-	"go.uber.org/zap"
-	"net/http"
-	"net/http/pprof"
 )
 
 const flagLogLevel = "Info"

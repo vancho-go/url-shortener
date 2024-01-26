@@ -4,19 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"math/rand"
+	"net/http"
+	"time"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
+	"go.uber.org/zap"
+
 	"github.com/vancho-go/url-shortener/internal/app/auth"
 	"github.com/vancho-go/url-shortener/internal/app/base62"
 	"github.com/vancho-go/url-shortener/internal/app/logger"
 	"github.com/vancho-go/url-shortener/internal/app/models"
 	"github.com/vancho-go/url-shortener/internal/app/storage"
-	"go.uber.org/zap"
-	"io"
-	"math/rand"
-	"net/http"
-	"time"
 )
 
 type Storage interface {
