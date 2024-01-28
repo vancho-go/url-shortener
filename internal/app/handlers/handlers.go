@@ -301,7 +301,7 @@ func GetUserURLs(db Storager, addr string) http.HandlerFunc {
 		userURLs, err := db.GetUserURLs(ctx, userID)
 
 		if len(userURLs) == 0 {
-			res.WriteHeader(http.StatusNoContent)
+			res.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
