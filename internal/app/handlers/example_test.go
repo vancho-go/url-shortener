@@ -23,6 +23,8 @@ func ExampleEncodeURL() {
 	handlerFunc(rr, req)
 
 	res := rr.Result()
+
+	defer res.Body.Close()
 	// Выводим результат.
 	fmt.Printf("Status Code: %d\n", res.StatusCode)
 
@@ -52,6 +54,7 @@ func ExampleDecodeURL() {
 	r.ServeHTTP(rr, req)
 
 	res := rr.Result()
+	defer res.Body.Close()
 	fmt.Printf("Status Code: %d\n", res.StatusCode)
 
 	// Output:
@@ -76,6 +79,7 @@ func ExampleEncodeURLJSON() {
 	handlerFunc(rr, req)
 
 	res := rr.Result()
+	defer res.Body.Close()
 	fmt.Printf("Status Code: %d\n", res.StatusCode)
 
 	// Output:
@@ -100,6 +104,7 @@ func ExampleEncodeBatch() {
 	handlerFunc(rr, req)
 
 	res := rr.Result()
+	defer res.Body.Close()
 	fmt.Printf("Status Code: %d\n", res.StatusCode)
 
 	// Output:
@@ -124,6 +129,7 @@ func ExampleGetUserURLs() {
 	handlerFunc(rr, req)
 
 	res := rr.Result()
+	defer res.Body.Close()
 	fmt.Printf("Status Code: %d\n", res.StatusCode)
 
 	// Output:
@@ -148,6 +154,7 @@ func ExampleDeleteURLs() {
 	handlerFunc(rr, req)
 
 	res := rr.Result()
+	defer res.Body.Close()
 	fmt.Printf("Status Code: %d\n", res.StatusCode)
 
 	// Output:
