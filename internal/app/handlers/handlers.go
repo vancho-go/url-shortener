@@ -271,7 +271,7 @@ func GetUserURLs(db Storage, addr string) http.HandlerFunc {
 			logger.Log.Debug("error getting cookie", zap.Error(err))
 
 			// Replace it after tests repaired
-			http.Error(res, "No cookie presented", http.StatusNoContent)
+			http.Error(res, "No cookie presented", http.StatusUnauthorized)
 			return
 		}
 		userID, err := auth.GetUserID(cookie.Value)
