@@ -1,3 +1,4 @@
+// Модуль storage представляет собой различные вараинты хранилищ данных.
 package storage
 
 import (
@@ -13,12 +14,15 @@ import (
 	"github.com/vancho-go/url-shortener/internal/app/models"
 )
 
+// ErrDeletedURL - тип ошибки, сигнализирующий, что URL был удален.
 var ErrDeletedURL = errors.New("URL was deleted")
 
+// Database - объект, содержащий информацию о БД.
 type Database struct {
 	DB *sql.DB
 }
 
+// Initialize создает соединение с БД и создает схему таблиц, если ее нет.
 func Initialize(dsn string) (*Database, error) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
@@ -37,6 +41,7 @@ func Initialize(dsn string) (*Database, error) {
 	return &Database{DB: db}, nil
 }
 
+// CreateIfNotExists создает схему таблиц, если ее нет.
 func CreateIfNotExists(db *sql.DB) error {
 	createTableQuery := `
 		CREATE TABLE IF NOT EXISTS urls (

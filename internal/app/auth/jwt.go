@@ -1,3 +1,4 @@
+// Модуль auth реализует логику аутентификации пользователя.
 package auth
 
 import (
@@ -15,17 +16,26 @@ import (
 
 type key int
 
+// CookieKey - параметр, необходимый для передачи токена через context.
 const (
 	CookieKey key = iota
 )
+
+// TokenExp - время действия сгенерированного токена (cookie).
 const TokenExp = time.Hour * 24
+
+// SecretKey - секретный ключ для генерации токена (bad practice to store it here, just for study case).
 const SecretKey = "temp_secret_key"
 
+// Claims - данные, которые в себе будет содержать генерируемый токен.
 type Claims struct {
 	jwt.RegisteredClaims
 	UserID string
 }
 
+// JWTMiddleware выполняет роль middleware, которая проверяет наличие токена аутентификации.
+// Если токен присутствует и он валидный, middleware передает запрос следующему обработчику.
+// Если токена нет, генерируется новый токен, который передается следующему обработчику через context.
 func JWTMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := req.Cookie("AuthToken")
@@ -56,10 +66,12 @@ func JWTMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// generateUserID генерирует рандомный UUID.
 func generateUserID() string {
 	return uuid.New().String()
 }
 
+// generateJWTToken токен для пользователя, чей userID передан в качестве параметра.
 func generateJWTToken(userID string) (string, error) {
 	// создаём новый токен с алгоритмом подписи HS256 и утверждениями — Claims
 	expirationTime := time.Now().Add(TokenExp)
@@ -74,6 +86,7 @@ func generateJWTToken(userID string) (string, error) {
 	return token.SignedString([]byte(SecretKey))
 }
 
+// IsTokenValid проверяет токен на валидность.
 func IsTokenValid(tokenString string) bool {
 	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -87,6 +100,7 @@ func IsTokenValid(tokenString string) bool {
 	return token.Valid
 }
 
+// GetUserID извлекает userID из валидного токена.
 func GetUserID(tokenString string) (string, error) {
 	if !IsTokenValid(tokenString) {
 		return "", fmt.Errorf("token is not valid")

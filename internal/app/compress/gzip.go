@@ -1,3 +1,4 @@
+// Модуль compress выполняет функцию сжатия http.ResponseWriter в gzip.
 package compress
 
 import (
@@ -63,6 +64,7 @@ func newGzipReader(r io.ReadCloser) (*gzipReader, error) {
 	return &gzipReader{r: r, gzipReader: gzReader}, nil
 }
 
+// GzipMiddleware выполняет роль middleware, которая оборачиваем оригинальный http.ResponseWriter новым с поддержкой сжатия.
 func GzipMiddleware(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		originalWriter := w

@@ -1,3 +1,4 @@
+// Модуль handlers сожержит логику обработчиков.
 package handlers
 
 import (
@@ -22,15 +23,23 @@ import (
 )
 
 type Storage interface {
+	// AddURL сохраняет оригинальный и сокращенный URL в хранилище.
 	AddURL(context.Context, string, string, string) error
+	// AddURLs сохраняет batch оригинальных и сокращенных URL в хранилище.
 	AddURLs(context.Context, []models.APIBatchRequest, string) error
+	// GetURL извлекает сокращенный URL для переданного оригинального URL из хранилища.
 	GetURL(context.Context, string) (string, error)
+	// IsShortenUnique проверяет сокращенный URL на уникальность.
 	IsShortenUnique(context.Context, string) bool
+	// Close закрывает хранилище.
 	Close() error
+	// GetUserURLs извлекает URL из хранилища для конкретного пользователя.
 	GetUserURLs(context.Context, string) ([]models.APIUserURLResponse, error)
+	// DeleteUserURLs удаляет URL из хранилища для конкретного пользователя.
 	DeleteUserURLs(context.Context, []models.DeleteURLRequest) error
 }
 
+// DecodeURL возвращает оригинальный URL из хранилища для переданного сокращенного URL.
 func DecodeURL(db Storage) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		shortenURL := chi.URLParam(req, "shortenURL")
@@ -51,6 +60,7 @@ func DecodeURL(db Storage) http.HandlerFunc {
 	}
 }
 
+// EncodeURL генерирует сокращенный URL для переданного оригинального URL.
 func EncodeURL(db Storage, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := getCookie(req)
@@ -117,6 +127,7 @@ func EncodeURL(db Storage, addr string) http.HandlerFunc {
 	}
 }
 
+// EncodeURLJSON генерирует сокращенный URL для переданного оригинального URL (в json).
 func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := getCookie(req)
@@ -194,6 +205,7 @@ func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 	}
 }
 
+// EncodeBatch batch сокращенных URL для batch оригинальных URL.
 func EncodeBatch(db Storage, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := getCookie(req)
@@ -266,6 +278,7 @@ func EncodeBatch(db Storage, addr string) http.HandlerFunc {
 	}
 }
 
+// GetUserURLs возвращает пользователю его ранее сокращенные URL.
 func GetUserURLs(db Storage, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := req.Cookie("AuthToken")
@@ -312,6 +325,7 @@ func GetUserURLs(db Storage, addr string) http.HandlerFunc {
 	}
 }
 
+// DeleteURLs удаляет URL пользователя.
 func DeleteURLs(db Storage) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := req.Cookie("AuthToken")
@@ -354,6 +368,7 @@ func DeleteURLs(db Storage) http.HandlerFunc {
 	}
 }
 
+// CheckDBConnection пингует БД для проверки на доступность.
 func CheckDBConnection(store Storage) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		db, ok := store.(*storage.Database)

@@ -1,3 +1,4 @@
+// Модуль logger логирует информацию и реализует middleware-логгер для входящих HTTP-запросов.
 package logger
 
 import (
@@ -27,6 +28,7 @@ type (
 	}
 )
 
+// Write реализация метода Write для loggingResponseWriter.
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	// записываем ответ, используя оригинальный http.ResponseWriter
 	size, err := r.ResponseWriter.Write(b)
@@ -34,6 +36,7 @@ func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	return size, err
 }
 
+// WriteHeader реализация метода WriteHeader для loggingResponseWriter.
 func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	// записываем код статуса, используя оригинальный http.ResponseWriter
 	r.ResponseWriter.WriteHeader(statusCode)

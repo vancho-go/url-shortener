@@ -7,6 +7,7 @@ import (
 	"github.com/vancho-go/url-shortener/internal/app/models"
 )
 
+// MapDB - key-value хранилище для URL.
 type MapDB map[string]string
 
 func (storage MapDB) AddURL(ctx context.Context, originalURL, shortenURL, userID string) error {
