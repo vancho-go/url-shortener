@@ -133,7 +133,7 @@ func ExampleGetUserURLs() {
 	fmt.Printf("Status Code: %d\n", res.StatusCode)
 
 	// Output:
-	// Status Code: 204
+	// Status Code: 401
 }
 
 func ExampleDeleteURLs() {
