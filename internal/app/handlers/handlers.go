@@ -293,7 +293,7 @@ func GetUserURLs(db Storager, addr string) http.HandlerFunc {
 		userID, err := auth.GetUserID(cookie.Value)
 		if err != nil {
 			logger.Log.Warn("something wrong with user_id", zap.Error(err))
-			http.Error(res, "Bad user_id", http.StatusNoContent)
+			http.Error(res, "Bad user_id", http.StatusUnauthorized)
 			return
 		}
 		ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
@@ -301,7 +301,7 @@ func GetUserURLs(db Storager, addr string) http.HandlerFunc {
 		userURLs, err := db.GetUserURLs(ctx, userID)
 
 		if len(userURLs) == 0 {
-			res.WriteHeader(http.StatusUnauthorized)
+			res.WriteHeader(http.StatusNoContent)
 			return
 		}
 
