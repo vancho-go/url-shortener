@@ -287,13 +287,13 @@ func GetUserURLs(db Storager, addr string) http.HandlerFunc {
 			logger.Log.Debug("error getting cookie", zap.Error(err))
 
 			// Replace it after tests repaired
-			http.Error(res, "No cookie presented", http.StatusUnauthorized)
+			http.Error(res, "No cookie presented", http.StatusNoContent)
 			return
 		}
 		userID, err := auth.GetUserID(cookie.Value)
 		if err != nil {
 			logger.Log.Warn("something wrong with user_id", zap.Error(err))
-			http.Error(res, "Bad user_id", http.StatusUnauthorized)
+			http.Error(res, "Bad user_id", http.StatusNoContent)
 			return
 		}
 		ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
