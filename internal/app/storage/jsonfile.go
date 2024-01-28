@@ -54,22 +54,27 @@ func (ed *EncoderDecoder) Initialize() error {
 	return nil
 }
 
+// Close закрывает хранилище.
 func (ed *EncoderDecoder) Close() error {
 	return ed.file.Close()
 }
 
+// GetUserURLs извлекает URL из хранилища для конкретного пользователя.
 func (ed *EncoderDecoder) GetUserURLs(ctx context.Context, userID string) ([]models.APIUserURLResponse, error) {
 	return nil, errors.New("method not implemented for this type of storage")
 }
 
+// DeleteUserURLs удаляет URL из хранилища для конкретного пользователя.
 func (ed *EncoderDecoder) DeleteUserURLs(ctx context.Context, urlsToDelete []models.DeleteURLRequest) error {
 	return errors.New("method not implemented for this type of storage")
 }
 
+// AddURLs сохраняет batch оригинальных и сокращенных URL в хранилище.
 func (ed *EncoderDecoder) AddURLs(ctx context.Context, urls []models.APIBatchRequest, userID string) error {
 	return errors.New("method not implemented for this type of storage")
 }
 
+// AddURL сохраняет оригинальный и сокращенный URL в хранилище.
 func (ed *EncoderDecoder) AddURL(ctx context.Context, originalURL, shortenURL, userID string) error {
 	data := &Data{ShortURL: shortenURL, OriginalURL: originalURL}
 	ed.mu.Lock()
@@ -78,6 +83,7 @@ func (ed *EncoderDecoder) AddURL(ctx context.Context, originalURL, shortenURL, u
 	return ed.encoder.Encode(&data)
 }
 
+// GetURL извлекает сокращенный URL для переданного оригинального URL из хранилища.
 func (ed *EncoderDecoder) GetURL(ctx context.Context, shortenURL string) (string, error) {
 	ed.mu.Lock()
 	originalURL, ok := ed.storage[shortenURL]
@@ -88,6 +94,7 @@ func (ed *EncoderDecoder) GetURL(ctx context.Context, shortenURL string) (string
 	return originalURL, nil
 }
 
+// IsShortenUnique проверяет сокращенный URL на уникальность.
 func (ed *EncoderDecoder) IsShortenUnique(ctx context.Context, shortenURL string) bool {
 	_, ok := ed.storage[shortenURL]
 	return !ok

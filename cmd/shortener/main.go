@@ -18,7 +18,7 @@ import (
 
 const flagLogLevel = "Info"
 
-func initStorage(serverConfig config.ServerConfig) (handlers.Storage, error) {
+func initStorage(serverConfig config.ServerConfig) (handlers.Storager, error) {
 	switch {
 	case serverConfig.DBDSN != "":
 		logger.Log.Info("Initializing postgres storage")
