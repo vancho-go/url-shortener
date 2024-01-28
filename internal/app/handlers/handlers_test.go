@@ -1,21 +1,80 @@
 package handlers
 
 import (
+	"errors"
+	"fmt"
+	"github.com/go-chi/chi/v5"
+	"github.com/vancho-go/url-shortener/internal/app/models"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"context"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/vancho-go/url-shortener/internal/app/storage"
 )
 
 const addr = "localhost:8080"
 
-var dbInstance = make(storage.MapDB)
+//var dbInstance = make(storage.MapDB)
+
+// MockStorager - это поддельная реализация Storager, используемая как в примере, так и в тестах.
+type MockStorager struct {
+	IsUniqueFunc func(ctx context.Context, shortenURL string) bool
+	AddURLFunc   func(ctx context.Context, originalURL string, shortenURL string, userID string) error
+	GetURLFunc   func(ctx context.Context, shortenURL string) (string, error)
+}
+
+func (m *MockStorager) AddURLs(ctx context.Context, requests []models.APIBatchRequest, s string) error {
+	return nil
+}
+
+func (m *MockStorager) Close() error {
+	return nil
+}
+
+func (m *MockStorager) GetUserURLs(ctx context.Context, s string) ([]models.APIUserURLResponse, error) {
+	return []models.APIUserURLResponse{
+		{
+			ShortenURL:  "localhost:8080/qwerty22423",
+			OriginalURL: "vk.com",
+		},
+		{
+			ShortenURL:  "localhost:8080/kslfvk4",
+			OriginalURL: "ya.ru",
+		},
+	}, nil
+}
+
+func (m *MockStorager) DeleteUserURLs(ctx context.Context, requests []models.DeleteURLRequest) error {
+	return nil
+}
+
+func (m *MockStorager) IsShortenUnique(ctx context.Context, shortenURL string) bool {
+	if m.IsUniqueFunc != nil {
+		return m.IsUniqueFunc(ctx, shortenURL)
+	}
+	return true // Значение по умолчанию, если функция не задана
+}
+
+func (m *MockStorager) AddURL(ctx context.Context, originalURL string, shortenURL string, userID string) error {
+	if m.AddURLFunc != nil {
+		return m.AddURLFunc(ctx, originalURL, shortenURL, userID)
+	}
+	return nil // Значение по умолчанию, если функция не задана
+}
+
+func (m *MockStorager) GetURL(ctx context.Context, shortenURL string) (string, error) {
+	if m.GetURLFunc != nil {
+		return m.GetURLFunc(ctx, shortenURL)
+	}
+	if shortenURL == "48fnuid2" {
+		return "http://example.com/encode", nil
+	}
+	return "", errors.New("not found") // Значение по умолчанию, если функция не задана
+}
 
 func TestEncodeURL(t *testing.T) {
 	type want struct {
@@ -49,7 +108,7 @@ func TestEncodeURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.method, tt.target, strings.NewReader(tt.reqBody))
 			w := httptest.NewRecorder()
-			handlerFunc := EncodeURL(dbInstance, addr)
+			handlerFunc := EncodeURL(&MockStorager{}, addr)
 			handlerFunc(w, request)
 
 			res := w.Result()
@@ -94,7 +153,7 @@ func TestDecodeURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.method, tt.target, strings.NewReader(tt.reqBody))
 			w := httptest.NewRecorder()
-			handlerFunc := DecodeURL(dbInstance)
+			handlerFunc := DecodeURL(&MockStorager{})
 			handlerFunc(w, request)
 
 			res := w.Result()
@@ -157,7 +216,7 @@ func TestEncodeURLJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.method, tt.target, strings.NewReader(tt.reqBody))
 			w := httptest.NewRecorder()
-			handlerFunc := EncodeURLJSON(dbInstance, addr)
+			handlerFunc := EncodeURLJSON(&MockStorager{}, addr)
 			handlerFunc(w, request)
 
 			res := w.Result()
@@ -175,4 +234,151 @@ func TestEncodeURLJSON(t *testing.T) {
 			}
 		})
 	}
+}
+
+func ExampleEncodeURL() {
+	// Создаем MockStorager.
+	db := MockStorager{}
+
+	// Создаем HTTP-запрос с телом, содержащим оригинальный URL.
+	originalURL := "http://example.com/original"
+	req := httptest.NewRequest("POST", "http://localhost:8080", strings.NewReader(originalURL))
+
+	// Создаем ResponseRecorder для записи ответа.
+	rr := httptest.NewRecorder()
+
+	// Создаем хендлер с использованием нашего MockStorager и адреса для сокращенных URL.
+	handlerFunc := EncodeURL(&db, "http://localhost:8080")
+	handlerFunc(rr, req)
+
+	res := rr.Result()
+	// Выводим результат.
+	fmt.Printf("Status Code: %d\n", res.StatusCode)
+
+	// Output:
+	// Status Code: 201
+}
+
+func ExampleDecodeURL() {
+	// Создаем MockStorager.
+	db := MockStorager{}
+
+	// Создаем роутер chi и регистрируем хендлер.
+	r := chi.NewRouter()
+	r.Get("/{shortenURL}", DecodeURL(&db))
+
+	// Создаем тестовый сервер.
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	// Создаем HTTP-запрос к тестовому серверу, содержащим существующий сокращенный URL.
+	req := httptest.NewRequest("GET", ts.URL+"/48fnuid2", nil)
+
+	// Создаем ResponseRecorder для записи ответа.
+	rr := httptest.NewRecorder()
+
+	// Делаем запрос через роутер chi, чтобы параметры URL были извлечены корректно.
+	r.ServeHTTP(rr, req)
+
+	res := rr.Result()
+	fmt.Printf("Status Code: %d\n", res.StatusCode)
+
+	// Output:
+	// Status Code: 307
+}
+
+func ExampleEncodeURLJSON() {
+	// Создаем MockStorager.
+	db := MockStorager{}
+
+	// Создаем HTTP-запрос с телом, содержащим оригинальный URL.
+	req := httptest.NewRequest(
+		"POST",
+		"http://localhost:8080/api/shorten",
+		strings.NewReader("{\"url\": \"vk.com\"}"))
+
+	// Создаем ResponseRecorder для записи ответа.
+	rr := httptest.NewRecorder()
+
+	// Создаем хендлер с использованием нашего MockStorager и адреса для сокращенных URL.
+	handlerFunc := EncodeURLJSON(&db, "localhost:8080")
+	handlerFunc(rr, req)
+
+	res := rr.Result()
+	fmt.Printf("Status Code: %d\n", res.StatusCode)
+
+	// Output:
+	// Status Code: 201
+}
+
+func ExampleEncodeBatch() {
+	// Создаем MockStorager.
+	db := MockStorager{}
+
+	// Создаем HTTP-запрос с телом, содержащим несколько оригинальных URL.
+	req := httptest.NewRequest(
+		"POST",
+		"http://localhost:8080/api/shorten/batch",
+		strings.NewReader("[{\"correlation_id\": \"ddd\",\"original_url\": \"facebook.com\"},{\"correlation_id\": \"ddd\",\"original_url\": \"youtube.com\"}]"))
+
+	// Создаем ResponseRecorder для записи ответа.
+	rr := httptest.NewRecorder()
+
+	// Создаем хендлер с использованием нашего MockStorager и адреса для сокращенных URL.
+	handlerFunc := EncodeBatch(&db, "localhost:8080")
+	handlerFunc(rr, req)
+
+	res := rr.Result()
+	fmt.Printf("Status Code: %d\n", res.StatusCode)
+
+	// Output:
+	// Status Code: 201
+}
+
+func ExampleGetUserURLs() {
+	// Создаем MockStorager.
+	db := MockStorager{}
+
+	// Создаем HTTP-запрос.
+	req := httptest.NewRequest(
+		"GET",
+		"http://localhost:8080/api/user/urls",
+		nil)
+
+	// Создаем ResponseRecorder для записи ответа.
+	rr := httptest.NewRecorder()
+
+	// Создаем хендлер с использованием нашего MockStorager и адреса для сокращенных URL.
+	handlerFunc := GetUserURLs(&db, "localhost:8080")
+	handlerFunc(rr, req)
+
+	res := rr.Result()
+	fmt.Printf("Status Code: %d\n", res.StatusCode)
+
+	// Output:
+	// Status Code: 204
+}
+
+func ExampleDeleteURLs() {
+	// Создаем MockStorager.
+	db := MockStorager{}
+
+	// Создаем HTTP-запрос.
+	req := httptest.NewRequest(
+		"DELETE",
+		"http://localhost:8080/api/user/urls",
+		nil)
+
+	// Создаем ResponseRecorder для записи ответа.
+	rr := httptest.NewRecorder()
+
+	// Создаем хендлер с использованием нашего MockStorager и адреса для сокращенных URL.
+	handlerFunc := DeleteURLs(&db)
+	handlerFunc(rr, req)
+
+	res := rr.Result()
+	fmt.Printf("Status Code: %d\n", res.StatusCode)
+
+	// Output:
+	// Status Code: 204
 }
