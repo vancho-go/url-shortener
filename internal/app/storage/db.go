@@ -84,7 +84,7 @@ func (db *Database) AddURL(ctx context.Context, originalURL, shortenURL, userID 
 }
 
 // AddURLs сохраняет batch оригинальных и сокращенных URL в хранилище.
-func (db *Database) AddURLs(ctx context.Context, urls []models.APIBatchRequest, userID string) error {
+func (db *Database) AddURLs(ctx context.Context, userID string, urls ...models.APIBatchRequest) error {
 	// Проверка на пустой слайс.
 	if len(urls) == 0 {
 		return nil
@@ -173,7 +173,7 @@ func (db *Database) GetUserURLs(ctx context.Context, userID string) ([]models.AP
 }
 
 // DeleteUserURLs удаляет URL из хранилища для конкретного пользователя.
-func (db *Database) DeleteUserURLs(ctx context.Context, urlsToDelete []models.DeleteURLRequest) error {
+func (db *Database) DeleteUserURLs(ctx context.Context, urlsToDelete ...models.DeleteURLRequest) error {
 	// Получаем канал с данными
 	inputCh := generateDeleteURLChan(ctx, urlsToDelete)
 

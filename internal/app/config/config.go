@@ -16,6 +16,8 @@ type ServerConfig struct {
 	FileStorage string
 	// DBDSN - connection string для подключения к БД.
 	DBDSN string
+	// LogLevel - уровень логгирования для логгера.
+	LogLevel string
 }
 
 type serverConfigBuilder struct {
@@ -46,6 +48,12 @@ func (b *serverConfigBuilder) WithDSN(dsn string) *serverConfigBuilder {
 	return b
 }
 
+// WithDSN задает значение для DBDSN.
+func (b *serverConfigBuilder) WithLogLevel(level string) *serverConfigBuilder {
+	b.config.LogLevel = level
+	return b
+}
+
 // ParseServer генерирует конфигурацию для инициализации сервера.
 func ParseServer() (ServerConfig, error) {
 	var serverHost string
@@ -59,6 +67,9 @@ func ParseServer() (ServerConfig, error) {
 
 	var dsn string
 	flag.StringVar(&dsn, "d", "", "data source name for driver to connect to DB")
+
+	var logLevel string
+	flag.StringVar(&logLevel, "l", "info", "logger level")
 
 	flag.Parse()
 
@@ -78,10 +89,14 @@ func ParseServer() (ServerConfig, error) {
 		dsn = envDSN
 	}
 
+	if envLevel := os.Getenv("LOG_LEVEL"); envLevel != "" {
+		logLevel = envLevel
+	}
+
 	var builder serverConfigBuilder
 
 	builder.WithServerHost(serverHost).
-		WithBaseHost(baseHost).WithFileStorage(fileStorage).WithDSN(dsn)
+		WithBaseHost(baseHost).WithFileStorage(fileStorage).WithDSN(dsn).WithLogLevel(logLevel)
 
 	return builder.config, nil
 }

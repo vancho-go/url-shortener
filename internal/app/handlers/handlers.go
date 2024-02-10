@@ -22,26 +22,8 @@ import (
 	"github.com/vancho-go/url-shortener/internal/app/storage"
 )
 
-// Storager реализует методы для работы с URL.
-type Storager interface {
-	// AddURL сохраняет оригинальный и сокращенный URL в хранилище.
-	AddURL(context.Context, string, string, string) error
-	// AddURLs сохраняет batch оригинальных и сокращенных URL в хранилище.
-	AddURLs(context.Context, []models.APIBatchRequest, string) error
-	// GetURL извлекает сокращенный URL для переданного оригинального URL из хранилища.
-	GetURL(context.Context, string) (string, error)
-	// IsShortenUnique проверяет сокращенный URL на уникальность.
-	IsShortenUnique(context.Context, string) bool
-	// Close закрывает хранилище.
-	Close() error
-	// GetUserURLs извлекает URL из хранилища для конкретного пользователя.
-	GetUserURLs(context.Context, string) ([]models.APIUserURLResponse, error)
-	// DeleteUserURLs удаляет URL из хранилища для конкретного пользователя.
-	DeleteUserURLs(context.Context, []models.DeleteURLRequest) error
-}
-
 // DecodeURL возвращает оригинальный URL из хранилища для переданного сокращенного URL.
-func DecodeURL(db Storager) http.HandlerFunc {
+func DecodeURL(db storage.URLStorager) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		shortenURL := chi.URLParam(req, "shortenURL")
 		ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
@@ -62,7 +44,7 @@ func DecodeURL(db Storager) http.HandlerFunc {
 }
 
 // EncodeURL генерирует сокращенный URL для переданного оригинального URL.
-func EncodeURL(db Storager, addr string) http.HandlerFunc {
+func EncodeURL(db storage.URLStorager, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := getCookie(req)
 		if err != nil {
@@ -129,7 +111,7 @@ func EncodeURL(db Storager, addr string) http.HandlerFunc {
 }
 
 // EncodeURLJSON генерирует сокращенный URL для переданного оригинального URL (в json).
-func EncodeURLJSON(db Storager, addr string) http.HandlerFunc {
+func EncodeURLJSON(db storage.URLStorager, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := getCookie(req)
 		if err != nil {
@@ -207,7 +189,7 @@ func EncodeURLJSON(db Storager, addr string) http.HandlerFunc {
 }
 
 // EncodeBatch batch сокращенных URL для batch оригинальных URL.
-func EncodeBatch(db Storager, addr string) http.HandlerFunc {
+func EncodeBatch(db storage.URLStorager, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := getCookie(req)
 		if err != nil {
@@ -256,7 +238,7 @@ func EncodeBatch(db Storager, addr string) http.HandlerFunc {
 			if len(batch) == batchSize || i == len(request)-1 {
 				ctx, cancel := context.WithTimeout(req.Context(), 5*time.Second)
 				defer cancel()
-				err := db.AddURLs(ctx, batch, userID)
+				err := db.AddURLs(ctx, userID, batch...)
 				if err != nil {
 					http.Error(res, "Error adding new shorten URLs", http.StatusBadRequest)
 					return
@@ -280,7 +262,7 @@ func EncodeBatch(db Storager, addr string) http.HandlerFunc {
 }
 
 // GetUserURLs возвращает пользователю его ранее сокращенные URL.
-func GetUserURLs(db Storager, addr string) http.HandlerFunc {
+func GetUserURLs(db storage.UserStorager, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := req.Cookie("AuthToken")
 		if err != nil {
@@ -327,7 +309,7 @@ func GetUserURLs(db Storager, addr string) http.HandlerFunc {
 }
 
 // DeleteURLs удаляет URL пользователя.
-func DeleteURLs(db Storager) http.HandlerFunc {
+func DeleteURLs(db storage.UserStorager) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := req.Cookie("AuthToken")
 		if err != nil {
@@ -362,7 +344,7 @@ func DeleteURLs(db Storager) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(req.Context(), 60*time.Second)
 		defer cancel()
 
-		err = db.DeleteUserURLs(ctx, urlsToDelete)
+		err = db.DeleteUserURLs(ctx, urlsToDelete...)
 		if err != nil {
 			logger.Log.Error("error deleting", zap.Error(err))
 		}
@@ -370,7 +352,7 @@ func DeleteURLs(db Storager) http.HandlerFunc {
 }
 
 // CheckDBConnection пингует БД для проверки на доступность.
-func CheckDBConnection(store Storager) http.HandlerFunc {
+func CheckDBConnection(store storage.URLStorager) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		db, ok := store.(*storage.Database)
 		if !ok {

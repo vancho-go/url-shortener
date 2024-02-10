@@ -1,10 +1,16 @@
 package base62
 
-import "testing"
+import (
+	"math/rand"
+	"testing"
+)
 
 func BenchmarkBase62Encode(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		Base62Encode(20)
+		b.StopTimer()
+		input := rand.Uint64()
+		b.StartTimer()
+		Base62Encode(input)
 	}
 }
 
@@ -20,6 +26,7 @@ func TestBase62Encode(t *testing.T) {
 		{62, "ab"},
 		{123, "9b"},
 		{3844, "aab"},
+		{4747474737838, "6ClcfKvb"},
 	}
 
 	for _, test := range tests {

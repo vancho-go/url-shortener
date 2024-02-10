@@ -37,12 +37,12 @@ func (storage MapDB) GetUserURLs(ctx context.Context, userID string) ([]models.A
 }
 
 // DeleteUserURLs удаляет URL из хранилища для конкретного пользователя.
-func (storage MapDB) DeleteUserURLs(ctx context.Context, urlsToDelete []models.DeleteURLRequest) error {
+func (storage MapDB) DeleteUserURLs(ctx context.Context, urlsToDelete ...models.DeleteURLRequest) error {
 	return errors.New("method not implemented for this type of storage")
 }
 
 // AddURLs сохраняет batch оригинальных и сокращенных URL в хранилище.
-func (storage MapDB) AddURLs(ctx context.Context, urls []models.APIBatchRequest, userID string) error {
+func (storage MapDB) AddURLs(ctx context.Context, userID string, urls ...models.APIBatchRequest) error {
 	return errors.New("method not implemented for this type of storage")
 }
 

@@ -65,12 +65,12 @@ func (ed *EncoderDecoder) GetUserURLs(ctx context.Context, userID string) ([]mod
 }
 
 // DeleteUserURLs удаляет URL из хранилища для конкретного пользователя.
-func (ed *EncoderDecoder) DeleteUserURLs(ctx context.Context, urlsToDelete []models.DeleteURLRequest) error {
+func (ed *EncoderDecoder) DeleteUserURLs(ctx context.Context, urlsToDelete ...models.DeleteURLRequest) error {
 	return errors.New("method not implemented for this type of storage")
 }
 
 // AddURLs сохраняет batch оригинальных и сокращенных URL в хранилище.
-func (ed *EncoderDecoder) AddURLs(ctx context.Context, urls []models.APIBatchRequest, userID string) error {
+func (ed *EncoderDecoder) AddURLs(ctx context.Context, userID string, urls ...models.APIBatchRequest) error {
 	return errors.New("method not implemented for this type of storage")
 }
 

@@ -7,9 +7,10 @@ import (
 	"strings"
 )
 
+// ExampleEncodeURL демонстрирует пример сокращения ссылки.
 func ExampleEncodeURL() {
 	// Создаем MockStorager.
-	db := MockStorager{}
+	var db MockStorager
 
 	// Создаем HTTP-запрос с телом, содержащим оригинальный URL.
 	originalURL := "http://example.com/original"
@@ -32,9 +33,10 @@ func ExampleEncodeURL() {
 	// Status Code: 201
 }
 
+// ExampleDecodeURL демонстрирует пример преобразования сокращенной ссылки в оригинальную.
 func ExampleDecodeURL() {
 	// Создаем MockStorager.
-	db := MockStorager{}
+	var db MockStorager
 
 	// Создаем роутер chi и регистрируем хендлер.
 	r := chi.NewRouter()
@@ -61,9 +63,10 @@ func ExampleDecodeURL() {
 	// Status Code: 307
 }
 
+// ExampleEncodeURLJSON демонстрирует пример преобразования ссылки, переданной в json, в сокращенную.
 func ExampleEncodeURLJSON() {
 	// Создаем MockStorager.
-	db := MockStorager{}
+	var db MockStorager
 
 	// Создаем HTTP-запрос с телом, содержащим оригинальный URL.
 	req := httptest.NewRequest(
@@ -86,9 +89,10 @@ func ExampleEncodeURLJSON() {
 	// Status Code: 201
 }
 
+// ExampleEncodeBatch демонстрирует пример преобразования сразу нескольких ссылок (batch) в сокращенные.
 func ExampleEncodeBatch() {
 	// Создаем MockStorager.
-	db := MockStorager{}
+	var db MockStorager
 
 	// Создаем HTTP-запрос с телом, содержащим несколько оригинальных URL.
 	req := httptest.NewRequest(
@@ -111,9 +115,10 @@ func ExampleEncodeBatch() {
 	// Status Code: 201
 }
 
+// ExampleGetUserURLs демонстрирует пример получения ссылок пользователя.
 func ExampleGetUserURLs() {
 	// Создаем MockStorager.
-	db := MockStorager{}
+	var db MockStorager
 
 	// Создаем HTTP-запрос.
 	req := httptest.NewRequest(
@@ -136,9 +141,10 @@ func ExampleGetUserURLs() {
 	// Status Code: 401
 }
 
+// ExampleDeleteURLs демонстрирует пример удаления ссылок пользователя.
 func ExampleDeleteURLs() {
 	// Создаем MockStorager.
-	db := MockStorager{}
+	var db MockStorager
 
 	// Создаем HTTP-запрос.
 	req := httptest.NewRequest(

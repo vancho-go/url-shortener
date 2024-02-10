@@ -25,7 +25,7 @@ type MockStorager struct {
 	GetURLFunc   func(ctx context.Context, shortenURL string) (string, error)
 }
 
-func (m *MockStorager) AddURLs(ctx context.Context, requests []models.APIBatchRequest, s string) error {
+func (m *MockStorager) AddURLs(ctx context.Context, s string, requests ...models.APIBatchRequest) error {
 	return nil
 }
 
@@ -46,7 +46,7 @@ func (m *MockStorager) GetUserURLs(ctx context.Context, s string) ([]models.APIU
 	}, nil
 }
 
-func (m *MockStorager) DeleteUserURLs(ctx context.Context, requests []models.DeleteURLRequest) error {
+func (m *MockStorager) DeleteUserURLs(ctx context.Context, requests ...models.DeleteURLRequest) error {
 	return nil
 }
 
