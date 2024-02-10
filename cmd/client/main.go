@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/vancho-go/url-shortener/internal/app/config"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/vancho-go/url-shortener/internal/app/config"
 )
 
 func main() {

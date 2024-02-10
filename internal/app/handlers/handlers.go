@@ -1,34 +1,29 @@
+// Модуль handlers сожержит логику обработчиков.
 package handlers
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"math/rand"
+	"net/http"
+	"time"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
+	"go.uber.org/zap"
+
 	"github.com/vancho-go/url-shortener/internal/app/auth"
 	"github.com/vancho-go/url-shortener/internal/app/base62"
 	"github.com/vancho-go/url-shortener/internal/app/logger"
 	"github.com/vancho-go/url-shortener/internal/app/models"
 	"github.com/vancho-go/url-shortener/internal/app/storage"
-	"go.uber.org/zap"
-	"io"
-	"math/rand"
-	"net/http"
-	"time"
 )
 
-type Storage interface {
-	AddURL(context.Context, string, string, string) error
-	GetURL(context.Context, string) (string, error)
-	IsShortenUnique(context.Context, string) bool
-	Close() error
-	GetUserURLs(context.Context, string) ([]models.APIUserURLResponse, error)
-	DeleteUserURLs(context.Context, []models.DeleteURLRequest) error
-}
-
-func DecodeURL(db Storage) http.HandlerFunc {
+// DecodeURL возвращает оригинальный URL из хранилища для переданного сокращенного URL.
+func DecodeURL(db storage.URLStorager) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		shortenURL := chi.URLParam(req, "shortenURL")
 		ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
@@ -48,7 +43,8 @@ func DecodeURL(db Storage) http.HandlerFunc {
 	}
 }
 
-func EncodeURL(db Storage, addr string) http.HandlerFunc {
+// EncodeURL генерирует сокращенный URL для переданного оригинального URL.
+func EncodeURL(db storage.URLStorager, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := getCookie(req)
 		if err != nil {
@@ -114,7 +110,8 @@ func EncodeURL(db Storage, addr string) http.HandlerFunc {
 	}
 }
 
-func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
+// EncodeURLJSON генерирует сокращенный URL для переданного оригинального URL (в json).
+func EncodeURLJSON(db storage.URLStorager, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := getCookie(req)
 		if err != nil {
@@ -191,7 +188,8 @@ func EncodeURLJSON(db Storage, addr string) http.HandlerFunc {
 	}
 }
 
-func EncodeBatch(db Storage, addr string) http.HandlerFunc {
+// EncodeBatch batch сокращенных URL для batch оригинальных URL.
+func EncodeBatch(db storage.URLStorager, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := getCookie(req)
 		if err != nil {
@@ -214,8 +212,11 @@ func EncodeBatch(db Storage, addr string) http.HandlerFunc {
 			return
 		}
 
+		var batch []models.APIBatchRequest
 		var response []models.APIBatchResponse
-		for _, url := range request {
+		const batchSize = 100
+
+		for i, url := range request {
 			originalURL := url.OriginalURL
 			if originalURL == "" {
 				continue
@@ -228,14 +229,25 @@ func EncodeBatch(db Storage, addr string) http.HandlerFunc {
 				shortenURL = base62.Base62Encode(rand.Uint64())
 			}
 
-			ctx, cancel2 := context.WithTimeout(req.Context(), 1*time.Second)
-			defer cancel2()
-			err := db.AddURL(ctx, originalURL, shortenURL, userID)
-			if err != nil {
-				http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
-				return
+			batch = append(batch, models.APIBatchRequest{
+				CorrelationID: url.CorrelationID,
+				OriginalURL:   originalURL,
+				ShortenURL:    shortenURL,
+			})
+
+			if len(batch) == batchSize || i == len(request)-1 {
+				ctx, cancel := context.WithTimeout(req.Context(), 5*time.Second)
+				defer cancel()
+				err := db.AddURLs(ctx, userID, batch...)
+				if err != nil {
+					http.Error(res, "Error adding new shorten URLs", http.StatusBadRequest)
+					return
+				}
+				for _, b := range batch {
+					response = append(response, models.APIBatchResponse{CorrelationID: b.CorrelationID, ShortenURL: addr + "/" + b.ShortenURL})
+				}
+				batch = nil // Сбросить пакет после вставки.
 			}
-			response = append(response, models.APIBatchResponse{CorrelationID: url.CorrelationID, ShortenURL: addr + "/" + shortenURL})
 		}
 
 		res.Header().Set("Content-Type", "application/json")
@@ -249,14 +261,15 @@ func EncodeBatch(db Storage, addr string) http.HandlerFunc {
 	}
 }
 
-func GetUserURLs(db Storage, addr string) http.HandlerFunc {
+// GetUserURLs возвращает пользователю его ранее сокращенные URL.
+func GetUserURLs(db storage.UserStorager, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := req.Cookie("AuthToken")
 		if err != nil {
 			logger.Log.Debug("error getting cookie", zap.Error(err))
 
 			// Replace it after tests repaired
-			http.Error(res, "No cookie presented", http.StatusNoContent)
+			http.Error(res, "No cookie presented", http.StatusUnauthorized)
 			return
 		}
 		userID, err := auth.GetUserID(cookie.Value)
@@ -295,7 +308,8 @@ func GetUserURLs(db Storage, addr string) http.HandlerFunc {
 	}
 }
 
-func DeleteURLs(db Storage) http.HandlerFunc {
+// DeleteURLs удаляет URL пользователя.
+func DeleteURLs(db storage.UserStorager) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := req.Cookie("AuthToken")
 		if err != nil {
@@ -330,14 +344,15 @@ func DeleteURLs(db Storage) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(req.Context(), 60*time.Second)
 		defer cancel()
 
-		err = db.DeleteUserURLs(ctx, urlsToDelete)
+		err = db.DeleteUserURLs(ctx, urlsToDelete...)
 		if err != nil {
 			logger.Log.Error("error deleting", zap.Error(err))
 		}
 	}
 }
 
-func CheckDBConnection(store Storage) http.HandlerFunc {
+// CheckDBConnection пингует БД для проверки на доступность.
+func CheckDBConnection(store storage.URLStorager) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		db, ok := store.(*storage.Database)
 		if !ok {

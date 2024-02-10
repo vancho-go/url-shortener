@@ -1,22 +1,28 @@
+// Модуль storage представляет собой различные вараинты хранилищ данных.
 package storage
 
 import (
 	"context"
 	"database/sql"
 	"errors"
+	"sync"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"go.uber.org/zap"
+
 	"github.com/vancho-go/url-shortener/internal/app/logger"
 	"github.com/vancho-go/url-shortener/internal/app/models"
-	"go.uber.org/zap"
-	"sync"
 )
 
+// ErrDeletedURL - тип ошибки, сигнализирующий, что URL был удален.
 var ErrDeletedURL = errors.New("URL was deleted")
 
+// Database - объект, содержащий информацию о БД.
 type Database struct {
 	DB *sql.DB
 }
 
+// Initialize создает соединение с БД и создает схему таблиц, если ее нет.
 func Initialize(dsn string) (*Database, error) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
@@ -35,6 +41,7 @@ func Initialize(dsn string) (*Database, error) {
 	return &Database{DB: db}, nil
 }
 
+// CreateIfNotExists создает схему таблиц, если ее нет.
 func CreateIfNotExists(db *sql.DB) error {
 	createTableQuery := `
 		CREATE TABLE IF NOT EXISTS urls (
@@ -54,6 +61,7 @@ func CreateIfNotExists(db *sql.DB) error {
 	return nil
 }
 
+// AddURL сохраняет оригинальный и сокращенный URL в хранилище.
 func (db *Database) AddURL(ctx context.Context, originalURL, shortenURL, userID string) error {
 	tx, err := db.DB.Begin()
 	if err != nil {
@@ -75,6 +83,37 @@ func (db *Database) AddURL(ctx context.Context, originalURL, shortenURL, userID 
 	return tx.Commit()
 }
 
+// AddURLs сохраняет batch оригинальных и сокращенных URL в хранилище.
+func (db *Database) AddURLs(ctx context.Context, userID string, urls ...models.APIBatchRequest) error {
+	// Проверка на пустой слайс.
+	if len(urls) == 0 {
+		return nil
+	}
+
+	tx, err := db.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx, "INSERT INTO urls (shorten_url, original_url, user_id) VALUES ($1, $2, $3)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	// Для каждого URL в слайсе.
+	for _, url := range urls {
+		_, err = stmt.ExecContext(ctx, url.ShortenURL, url.OriginalURL, userID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// GetURL извлекает сокращенный URL для переданного оригинального URL из хранилища.
 func (db *Database) GetURL(ctx context.Context, shortenURL string) (string, error) {
 	selectQuery := "SELECT original_url, deleted FROM urls WHERE shorten_url=$1"
 	stmt, err := db.DB.Prepare(selectQuery)
@@ -98,6 +137,7 @@ func (db *Database) GetURL(ctx context.Context, shortenURL string) (string, erro
 
 }
 
+// GetUserURLs извлекает URL из хранилища для конкретного пользователя.
 func (db *Database) GetUserURLs(ctx context.Context, userID string) ([]models.APIUserURLResponse, error) {
 	selectQuery := "SELECT shorten_url, original_url FROM urls WHERE user_id=$1"
 	stmt, err := db.DB.Prepare(selectQuery)
@@ -132,7 +172,8 @@ func (db *Database) GetUserURLs(ctx context.Context, userID string) ([]models.AP
 	return userURLs, nil
 }
 
-func (db *Database) DeleteUserURLs(ctx context.Context, urlsToDelete []models.DeleteURLRequest) error {
+// DeleteUserURLs удаляет URL из хранилища для конкретного пользователя.
+func (db *Database) DeleteUserURLs(ctx context.Context, urlsToDelete ...models.DeleteURLRequest) error {
 	// Получаем канал с данными
 	inputCh := generateDeleteURLChan(ctx, urlsToDelete)
 
@@ -255,6 +296,8 @@ func (db *Database) deleteUserURL(ctx context.Context, urlToDelete models.Delete
 	return nil
 }
 
+// GetShortenURLByOriginal извлекает сокращенный URL из хранилища,
+// который соответсвует оригинальному URL.
 func (db *Database) GetShortenURLByOriginal(ctx context.Context, originalURL string) (string, error) {
 	selectQuery := "SELECT shorten_url FROM urls WHERE original_url=$1"
 	stmt, err := db.DB.Prepare(selectQuery)
@@ -273,6 +316,7 @@ func (db *Database) GetShortenURLByOriginal(ctx context.Context, originalURL str
 	return shortenURL, nil
 }
 
+// IsShortenUnique проверяет сокращенный URL на уникальность.
 func (db *Database) IsShortenUnique(ctx context.Context, shortenURL string) bool {
 	selectQuery := "SELECT COUNT(*) FROM urls WHERE shorten_url=$1"
 	stmt, err := db.DB.Prepare(selectQuery)
@@ -295,6 +339,7 @@ func (db *Database) IsShortenUnique(ctx context.Context, shortenURL string) bool
 	return count == 0
 }
 
+// Close закрывает хранилище.
 func (db *Database) Close() error {
 	return db.DB.Close()
 }

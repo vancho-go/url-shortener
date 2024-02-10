@@ -1,19 +1,78 @@
 package handlers
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/vancho-go/url-shortener/internal/app/storage"
+	"errors"
+	"github.com/vancho-go/url-shortener/internal/app/models"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"context"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const addr = "localhost:8080"
 
-var dbInstance = make(storage.MapDB)
+//var dbInstance = make(storage.MapDB)
+
+// MockStorager - это поддельная реализация Storager, используемая как в примере, так и в тестах.
+type MockStorager struct {
+	IsUniqueFunc func(ctx context.Context, shortenURL string) bool
+	AddURLFunc   func(ctx context.Context, originalURL string, shortenURL string, userID string) error
+	GetURLFunc   func(ctx context.Context, shortenURL string) (string, error)
+}
+
+func (m *MockStorager) AddURLs(ctx context.Context, s string, requests ...models.APIBatchRequest) error {
+	return nil
+}
+
+func (m *MockStorager) Close() error {
+	return nil
+}
+
+func (m *MockStorager) GetUserURLs(ctx context.Context, s string) ([]models.APIUserURLResponse, error) {
+	return []models.APIUserURLResponse{
+		{
+			ShortenURL:  "localhost:8080/qwerty22423",
+			OriginalURL: "vk.com",
+		},
+		{
+			ShortenURL:  "localhost:8080/kslfvk4",
+			OriginalURL: "ya.ru",
+		},
+	}, nil
+}
+
+func (m *MockStorager) DeleteUserURLs(ctx context.Context, requests ...models.DeleteURLRequest) error {
+	return nil
+}
+
+func (m *MockStorager) IsShortenUnique(ctx context.Context, shortenURL string) bool {
+	if m.IsUniqueFunc != nil {
+		return m.IsUniqueFunc(ctx, shortenURL)
+	}
+	return true // Значение по умолчанию, если функция не задана
+}
+
+func (m *MockStorager) AddURL(ctx context.Context, originalURL string, shortenURL string, userID string) error {
+	if m.AddURLFunc != nil {
+		return m.AddURLFunc(ctx, originalURL, shortenURL, userID)
+	}
+	return nil // Значение по умолчанию, если функция не задана
+}
+
+func (m *MockStorager) GetURL(ctx context.Context, shortenURL string) (string, error) {
+	if m.GetURLFunc != nil {
+		return m.GetURLFunc(ctx, shortenURL)
+	}
+	if shortenURL == "48fnuid2" {
+		return "http://example.com/encode", nil
+	}
+	return "", errors.New("not found") // Значение по умолчанию, если функция не задана
+}
 
 func TestEncodeURL(t *testing.T) {
 	type want struct {
@@ -47,7 +106,7 @@ func TestEncodeURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.method, tt.target, strings.NewReader(tt.reqBody))
 			w := httptest.NewRecorder()
-			handlerFunc := EncodeURL(dbInstance, addr)
+			handlerFunc := EncodeURL(&MockStorager{}, addr)
 			handlerFunc(w, request)
 
 			res := w.Result()
@@ -92,7 +151,7 @@ func TestDecodeURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.method, tt.target, strings.NewReader(tt.reqBody))
 			w := httptest.NewRecorder()
-			handlerFunc := DecodeURL(dbInstance)
+			handlerFunc := DecodeURL(&MockStorager{})
 			handlerFunc(w, request)
 
 			res := w.Result()
@@ -155,7 +214,7 @@ func TestEncodeURLJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.method, tt.target, strings.NewReader(tt.reqBody))
 			w := httptest.NewRecorder()
-			handlerFunc := EncodeURLJSON(dbInstance, addr)
+			handlerFunc := EncodeURLJSON(&MockStorager{}, addr)
 			handlerFunc(w, request)
 
 			res := w.Result()

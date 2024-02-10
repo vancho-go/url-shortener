@@ -1,3 +1,4 @@
+// Модуль compress выполняет функцию сжатия http.ResponseWriter в gzip.
 package compress
 
 import (
@@ -12,10 +13,12 @@ type gzipWriter struct {
 	gzipWriter *gzip.Writer
 }
 
+// Write реализация метода Write для gzipWriter.
 func (g *gzipWriter) Write(p []byte) (int, error) {
 	return g.gzipWriter.Write(p)
 }
 
+// WriteHeader реализация метода WriteHeader для gzipWriter.
 func (g *gzipWriter) WriteHeader(statusCode int) {
 	if statusCode < 300 {
 		g.w.Header().Set("Content-Encoding", "gzip")
@@ -23,10 +26,12 @@ func (g *gzipWriter) WriteHeader(statusCode int) {
 	g.w.WriteHeader(statusCode)
 }
 
+// Header реализация метода Header для gzipWriter.
 func (g *gzipWriter) Header() http.Header {
 	return g.w.Header()
 }
 
+// Close реализация метода Close для gzipWriter.
 func (g *gzipWriter) Close() error {
 	return g.gzipWriter.Close()
 }
@@ -43,10 +48,12 @@ type gzipReader struct {
 	gzipReader *gzip.Reader
 }
 
+// Read реализация метода Read для gzipReader.
 func (g *gzipReader) Read(p []byte) (int, error) {
 	return g.gzipReader.Read(p)
 }
 
+// Close реализация метода Close для gzipReader.
 func (g *gzipReader) Close() error {
 	if err := g.r.Close(); err != nil {
 		return err
@@ -63,6 +70,7 @@ func newGzipReader(r io.ReadCloser) (*gzipReader, error) {
 	return &gzipReader{r: r, gzipReader: gzReader}, nil
 }
 
+// GzipMiddleware выполняет роль middleware, которая оборачиваем оригинальный http.ResponseWriter новым с поддержкой сжатия.
 func GzipMiddleware(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		originalWriter := w
