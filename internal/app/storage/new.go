@@ -30,11 +30,13 @@ type UserStorager interface {
 	DeleteUserURLs(context.Context, ...models.DeleteURLRequest) error
 }
 
+// Storager реализует методы для работы с пользователями и URL.
 type Storager interface {
 	URLStorager
 	UserStorager
 }
 
+// New создает новое хранилище.
 func New(serverConfig config.ServerConfig) (Storager, error) {
 	switch {
 	case serverConfig.DBDSN != "":

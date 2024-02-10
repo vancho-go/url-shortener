@@ -6,6 +6,7 @@ import (
 	"net/http/pprof"
 )
 
+// PprofHandler отвечает за эндпоинты для pprof.
 func PprofHandler() http.Handler {
 	r := chi.NewRouter()
 	r.Get("/", pprof.Index)
