@@ -58,7 +58,6 @@ func JWTMiddleware(next http.Handler) http.Handler {
 			HttpOnly:   true,
 			Path:       "/",
 			Domain:     "",                       // не используется
-			MaxAge:     -1,                       // не используется
 			Secure:     false,                    // не используется
 			SameSite:   http.SameSiteDefaultMode, // не используется
 			Raw:        "",                       // не используется
