@@ -5,6 +5,7 @@ import (
 	"golang.org/x/tools/go/analysis/multichecker"
 )
 
+// Check запускает проверку всеми анализаторами.
 func Check() {
 	var analyzers []*analysis.Analyzer
 

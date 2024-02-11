@@ -13,6 +13,7 @@ import (
 	"net/http"
 )
 
+// Run запускает приложение.
 func Run() error {
 	configuration, err := config.ParseServer()
 	if err != nil {
