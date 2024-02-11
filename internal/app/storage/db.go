@@ -5,12 +5,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/vancho-go/url-shortener/pkg/logger"
 	"sync"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
 
-	"github.com/vancho-go/url-shortener/internal/app/logger"
 	"github.com/vancho-go/url-shortener/internal/app/models"
 )
 

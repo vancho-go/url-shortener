@@ -37,6 +37,7 @@ func NewEncoderDecoder(filename string) (*EncoderDecoder, error) {
 		storage: make(map[string]string),
 		encoder: json.NewEncoder(file),
 		decoder: json.NewDecoder(file),
+		mu:      sync.Mutex{},
 	}, nil
 }
 

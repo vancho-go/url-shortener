@@ -99,14 +99,14 @@ func TestEncodeURL(t *testing.T) {
 			method:  http.MethodPost,
 			reqBody: "https://practicum.yandex.ru",
 			target:  "/",
-			want:    want{code: 201, contentType: ""},
+			want:    want{code: 201, contentType: "", response: ""},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.method, tt.target, strings.NewReader(tt.reqBody))
 			w := httptest.NewRecorder()
-			handlerFunc := EncodeURL(&MockStorager{}, addr)
+			handlerFunc := EncodeURL(&MockStorager{IsUniqueFunc: nil, AddURLFunc: nil, GetURLFunc: nil}, addr)
 			handlerFunc(w, request)
 
 			res := w.Result()
@@ -151,7 +151,7 @@ func TestDecodeURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.method, tt.target, strings.NewReader(tt.reqBody))
 			w := httptest.NewRecorder()
-			handlerFunc := DecodeURL(&MockStorager{})
+			handlerFunc := DecodeURL(&MockStorager{IsUniqueFunc: nil, AddURLFunc: nil, GetURLFunc: nil})
 			handlerFunc(w, request)
 
 			res := w.Result()
@@ -207,14 +207,14 @@ func TestEncodeURLJSON(t *testing.T) {
 			method:  http.MethodPost,
 			reqBody: `{"url": "vk.com"}`,
 			target:  "/api/shorten",
-			want:    want{code: 201, contentType: "application/json"},
+			want:    want{code: 201, contentType: "application/json", response: ""},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.method, tt.target, strings.NewReader(tt.reqBody))
 			w := httptest.NewRecorder()
-			handlerFunc := EncodeURLJSON(&MockStorager{}, addr)
+			handlerFunc := EncodeURLJSON(&MockStorager{IsUniqueFunc: nil, AddURLFunc: nil, GetURLFunc: nil}, addr)
 			handlerFunc(w, request)
 
 			res := w.Result()

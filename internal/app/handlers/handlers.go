@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/vancho-go/url-shortener/pkg/logger"
 	"io"
 	"math/rand"
 	"net/http"
@@ -17,7 +18,6 @@ import (
 
 	"github.com/vancho-go/url-shortener/internal/app/auth"
 	"github.com/vancho-go/url-shortener/internal/app/base62"
-	"github.com/vancho-go/url-shortener/internal/app/logger"
 	"github.com/vancho-go/url-shortener/internal/app/models"
 	"github.com/vancho-go/url-shortener/internal/app/storage"
 )
@@ -128,7 +128,7 @@ func EncodeURLJSON(db storage.URLStorager, addr string) http.HandlerFunc {
 
 		var request models.APIShortenRequest
 		dec := json.NewDecoder(req.Body)
-		if err := dec.Decode(&request); err != nil {
+		if err = dec.Decode(&request); err != nil {
 			logger.Log.Warn("can't decode request JSON body", zap.Error(err))
 			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
 			return
@@ -328,7 +328,7 @@ func DeleteURLs(db storage.UserStorager) http.HandlerFunc {
 
 		var shortenUrls []string
 		dec := json.NewDecoder(req.Body)
-		if err := dec.Decode(&shortenUrls); err != nil {
+		if err = dec.Decode(&shortenUrls); err != nil {
 			logger.Log.Warn("can't decode request JSON body", zap.Error(err))
 			http.Error(res, "Error deleting shorten URLs", http.StatusBadRequest)
 			return
