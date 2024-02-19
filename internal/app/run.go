@@ -11,6 +11,7 @@ import (
 	"github.com/vancho-go/url-shortener/pkg/logger"
 	"go.uber.org/zap"
 	"net/http"
+	"path"
 )
 
 // Run запускает приложение.
@@ -34,7 +35,6 @@ func Run() error {
 	logger.Log.Info("Configuring http compress middleware")
 	compressMiddleware := compress.GzipMiddleware
 
-	logger.Log.Info("Running server", zap.String("address", configuration.ServerHost))
 	r := chi.NewRouter()
 
 	r.Get("/ping", logger.RequestLogger(handlers.CheckDBConnection(dbInstance)))
@@ -58,9 +58,19 @@ func Run() error {
 
 	r.Mount("/debug", handlers.PprofHandler())
 
-	err = http.ListenAndServe(configuration.ServerHost, r)
-	if err != nil {
-		return errors.New("error starting server")
+	if configuration.EnableHTTPS {
+		logger.Log.Info("Starting https server", zap.String("address", configuration.ServerHost))
+		err = http.ListenAndServeTLS(configuration.ServerHost, path.Join("certs", "cert.pem"), path.Join("certs", "key.pem"), r)
+		if err != nil {
+			return errors.New("error starting https server")
+		}
+	} else {
+		logger.Log.Info("Starting http server", zap.String("address", configuration.ServerHost))
+		err = http.ListenAndServe(configuration.ServerHost, r)
+		if err != nil {
+			return errors.New("error starting http server")
+		}
 	}
+
 	return nil
 }
