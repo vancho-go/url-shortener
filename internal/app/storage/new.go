@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"github.com/vancho-go/url-shortener/internal/app/config"
-	"github.com/vancho-go/url-shortener/internal/app/logger"
 	"github.com/vancho-go/url-shortener/internal/app/models"
+	"github.com/vancho-go/url-shortener/pkg/logger"
 )
 
 // URLStorager реализует методы для работы с URL.

@@ -4,14 +4,13 @@ package auth
 import (
 	"context"
 	"fmt"
+	"github.com/vancho-go/url-shortener/pkg/logger"
 	"net/http"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
-
-	"github.com/vancho-go/url-shortener/internal/app/logger"
 )
 
 type key int
@@ -52,11 +51,18 @@ func JWTMiddleware(next http.Handler) http.Handler {
 		}
 		logger.Log.Debug(fmt.Sprintf("generated new jwt token for user %s", userID))
 		cookieNew := &http.Cookie{
-			Name:     "AuthToken",
-			Value:    jwtToken,
-			Expires:  time.Now().Add(TokenExp),
-			HttpOnly: true,
-			Path:     "/",
+			Name: "AuthToken",
+
+			Value:      jwtToken,
+			Expires:    time.Now().Add(TokenExp),
+			HttpOnly:   true,
+			Path:       "/",
+			Domain:     "",                       // не используется
+			Secure:     false,                    // не используется
+			SameSite:   http.SameSiteDefaultMode, // не используется
+			Raw:        "",                       // не используется
+			Unparsed:   []string{},               // не используется
+			RawExpires: "",                       // не используется
 		}
 
 		http.SetCookie(res, cookieNew)
@@ -79,6 +85,12 @@ func generateJWTToken(userID string) (string, error) {
 		RegisteredClaims: jwt.RegisteredClaims{
 			// когда создан токен
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			Issuer:    "",                             // не используется
+			Subject:   "",                             // не используется
+			Audience:  []string{},                     // не используется
+			NotBefore: jwt.NewNumericDate(time.Now()), // не используется
+			IssuedAt:  jwt.NewNumericDate(time.Now()), // не используется
+			ID:        "",                             // не используется
 		},
 		// собственное утверждение
 		UserID: userID,
@@ -105,7 +117,18 @@ func GetUserID(tokenString string) (string, error) {
 	if !IsTokenValid(tokenString) {
 		return "", fmt.Errorf("token is not valid")
 	}
-	claims := &Claims{}
+	claims := &Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    "",                             // не используется
+			Subject:   "",                             // не используется
+			Audience:  []string{},                     // не используется
+			NotBefore: jwt.NewNumericDate(time.Now()), // не используется
+			IssuedAt:  jwt.NewNumericDate(time.Now()), // не используется
+			ID:        "",                             // не используется
+			ExpiresAt: nil,                            // не используется
+		},
+		UserID: "",
+	}
 	_, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
 		return []byte(SecretKey), nil
 	})

@@ -67,7 +67,7 @@ func Initialize(level string) error {
 func RequestLogger(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		processingStart := time.Now()
-		responseData := &responseData{}
+		responseData := &responseData{status: 0, size: 0}
 		lw := loggingResponseWriter{
 			ResponseWriter: w, // встраиваем оригинальный http.ResponseWriter
 			responseData:   responseData,
