@@ -56,6 +56,7 @@ func (b *serverConfigBuilder) WithLogLevel(level string) *serverConfigBuilder {
 	return b
 }
 
+// WithHTTPS задает значение для https.
 func (b *serverConfigBuilder) WithHTTPS(https bool) *serverConfigBuilder {
 	b.config.EnableHTTPS = https
 	return b
