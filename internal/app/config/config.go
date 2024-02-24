@@ -144,7 +144,7 @@ func ParseServer() (*ServerConfig, error) {
 		if dsn == "" {
 			dsn = jsonConfig.DatabaseDSN
 		}
-		if enableHTTPS == false && jsonConfig.EnableHTTPS == true {
+		if !enableHTTPS && jsonConfig.EnableHTTPS {
 			enableHTTPS = jsonConfig.EnableHTTPS
 		}
 	}
