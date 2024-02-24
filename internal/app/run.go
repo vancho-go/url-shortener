@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/vancho-go/url-shortener/internal/app/auth"
 	"github.com/vancho-go/url-shortener/internal/app/compress"
@@ -18,7 +19,7 @@ import (
 func Run() error {
 	configuration, err := config.ParseServer()
 	if err != nil {
-		return errors.New("error parsing server configuration")
+		return fmt.Errorf("error parsing server configuration: %v", err)
 	}
 
 	err = logger.Initialize(configuration.LogLevel)
@@ -26,7 +27,7 @@ func Run() error {
 		return errors.New("error initializing logger")
 	}
 
-	dbInstance, err := storage.New(configuration)
+	dbInstance, err := storage.New(*configuration)
 	if err != nil {
 		return err
 	}

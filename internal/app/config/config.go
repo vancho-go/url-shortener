@@ -2,9 +2,19 @@
 package config
 
 import (
+	"encoding/json"
 	"flag"
 	"os"
 )
+
+// JSONConfig - cтруктура, соответствующая JSON файлу.
+type JSONConfig struct {
+	ServerAddress   string `json:"server_address"`
+	BaseURL         string `json:"base_url"`
+	FileStoragePath string `json:"file_storage_path"`
+	DatabaseDSN     string `json:"database_dsn"`
+	EnableHTTPS     bool   `json:"enable_https"`
+}
 
 // ServerConfig хранит параметры, необходимые для инициализации сервера.
 type ServerConfig struct {
@@ -63,7 +73,7 @@ func (b *serverConfigBuilder) WithHTTPS(https bool) *serverConfigBuilder {
 }
 
 // ParseServer генерирует конфигурацию для инициализации сервера.
-func ParseServer() (ServerConfig, error) {
+func ParseServer() (*ServerConfig, error) {
 	var serverHost string
 	flag.StringVar(&serverHost, "a", "localhost:8080", "address and port to run server")
 
@@ -81,6 +91,10 @@ func ParseServer() (ServerConfig, error) {
 
 	var enableHTTPS bool
 	flag.BoolVar(&enableHTTPS, "s", false, "enable HTTPs on server")
+
+	var jsonConfigFile string
+	flag.StringVar(&jsonConfigFile, "c", "", "absolute path for json config file")
+	flag.StringVar(&jsonConfigFile, "config", "", "path for json config file")
 
 	flag.Parse()
 
@@ -108,10 +122,58 @@ func ParseServer() (ServerConfig, error) {
 		enableHTTPS = true
 	}
 
+	if envJSONConfigFile := os.Getenv("CONFIG"); envJSONConfigFile != "" {
+		jsonConfigFile = envJSONConfigFile
+	}
+
+	if jsonConfigFile != "" {
+		jsonConfig, err := parseJSONConfig(jsonConfigFile)
+		if err != nil {
+			return nil, err
+		}
+
+		if serverHost == "" {
+			serverHost = jsonConfig.ServerAddress
+		}
+		if baseHost == "" {
+			baseHost = jsonConfig.BaseURL
+		}
+		if fileStorage == "" {
+			fileStorage = jsonConfig.FileStoragePath
+		}
+		if dsn == "" {
+			dsn = jsonConfig.DatabaseDSN
+		}
+		if enableHTTPS == false && jsonConfig.EnableHTTPS == true {
+			enableHTTPS = jsonConfig.EnableHTTPS
+		}
+	}
+
 	var builder serverConfigBuilder
 
 	builder.WithServerHost(serverHost).
-		WithBaseHost(baseHost).WithFileStorage(fileStorage).WithDSN(dsn).WithLogLevel(logLevel).WithHTTPS(enableHTTPS)
+		WithBaseHost(baseHost).
+		WithFileStorage(fileStorage).
+		WithDSN(dsn).
+		WithLogLevel(logLevel).
+		WithHTTPS(enableHTTPS)
 
-	return builder.config, nil
+	return &builder.config, nil
+}
+
+// parseJSONConfig считывает конфигурацию из json файла
+func parseJSONConfig(configFile string) (*JSONConfig, error) {
+	file, err := os.Open(configFile)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var config JSONConfig
+	decoder := json.NewDecoder(file)
+	if err = decoder.Decode(&config); err != nil {
+		return nil, err
+	}
+
+	return &config, nil
 }
