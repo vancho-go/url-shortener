@@ -100,3 +100,8 @@ func (ed *EncoderDecoder) IsShortenUnique(ctx context.Context, shortenURL string
 	_, ok := ed.storage[shortenURL]
 	return !ok
 }
+
+// GetStats извлекает статистику хранилища.
+func (ed *EncoderDecoder) GetStats(ctx context.Context) (*models.APIStatsResponse, error) {
+	return nil, errors.New("method not implemented for this type of storage")
+}

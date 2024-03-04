@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/vancho-go/url-shortener/pkg/logger"
 	"sync"
 
@@ -337,6 +338,24 @@ func (db *Database) IsShortenUnique(ctx context.Context, shortenURL string) bool
 		return false
 	}
 	return count == 0
+}
+
+// GetStats извлекает статистику хранилища.
+func (db *Database) GetStats(ctx context.Context) (*models.APIStatsResponse, error) {
+	countURLsQuery := "SELECT COUNT(*) FROM urls WHERE deleted = false"
+	countURLs := db.DB.QueryRowContext(ctx, countURLsQuery)
+
+	countUsersQuery := "SELECT COUNT(DISTINCT user_id) FROM urls"
+	countUsers := db.DB.QueryRowContext(ctx, countUsersQuery)
+
+	var response models.APIStatsResponse
+	if err := countUsers.Scan(&response.Users); err != nil {
+		return nil, fmt.Errorf("getStats: error scanning row: %w", err)
+	}
+	if err := countURLs.Scan(&response.URLs); err != nil {
+		return nil, fmt.Errorf("getStats: error scanning row: %w", err)
+	}
+	return &response, nil
 }
 
 // Close закрывает хранилище.

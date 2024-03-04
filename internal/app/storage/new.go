@@ -30,10 +30,17 @@ type UserStorager interface {
 	DeleteUserURLs(context.Context, ...models.DeleteURLRequest) error
 }
 
+// StatsStorager реализует методы для работы со статистикой.
+type StatsStorager interface {
+	// GetStats извлекает статистику хранилища.
+	GetStats(context.Context) (*models.APIStatsResponse, error)
+}
+
 // Storager реализует методы для работы с пользователями и URL.
 type Storager interface {
 	URLStorager
 	UserStorager
+	StatsStorager
 }
 
 // New создает новое хранилище.

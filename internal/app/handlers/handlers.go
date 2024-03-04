@@ -371,11 +371,32 @@ func CheckDBConnection(store storage.URLStorager) http.HandlerFunc {
 	}
 }
 
+// GetStats возвращает статистику по хранилищу.
+func GetStats(store storage.StatsStorager) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		response, err := store.GetStats(req.Context())
+		if err != nil {
+			http.Error(res, "Error getting stats", http.StatusInternalServerError)
+			return
+		}
+		res.Header().Set("Content-Type", "application/json")
+		res.WriteHeader(http.StatusOK)
+		enc := json.NewEncoder(res)
+		if err := enc.Encode(response); err != nil {
+			logger.Log.Error("error encoding response", zap.Error(err))
+			http.Error(res, "Error getting stats", http.StatusBadRequest)
+			return
+		}
+	}
+}
+
+// isUniqueViolationError проверяет является ли ошибка UniqueViolation.
 func isUniqueViolationError(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation
 }
 
+// getCookie возвращает cookie пользователя.
 func getCookie(req *http.Request) (*http.Cookie, error) {
 	cookie, err := req.Cookie("AuthToken")
 

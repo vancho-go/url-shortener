@@ -14,6 +14,7 @@ type JSONConfig struct {
 	FileStoragePath string `json:"file_storage_path"`
 	DatabaseDSN     string `json:"database_dsn"`
 	EnableHTTPS     bool   `json:"enable_https"`
+	TrustedSubnet   string `json:"trusted_subnet"`
 }
 
 // ServerConfig хранит параметры, необходимые для инициализации сервера.
@@ -30,8 +31,11 @@ type ServerConfig struct {
 	LogLevel string
 	// EnableHTTPS - включение HTTPS в веб-сервере
 	EnableHTTPS bool
+	// TrustedSubnet - доверенная подсеть
+	TrustedSubnet string
 }
 
+// ServerConfigBuilder - строитель для ServerConfig.
 type serverConfigBuilder struct {
 	config ServerConfig
 }
@@ -72,6 +76,12 @@ func (b *serverConfigBuilder) WithHTTPS(https bool) *serverConfigBuilder {
 	return b
 }
 
+// WithTrustedSubnet задает значение для доверенной подсети.
+func (b *serverConfigBuilder) WithTrustedSubnet(trustedSubnet string) *serverConfigBuilder {
+	b.config.TrustedSubnet = trustedSubnet
+	return b
+}
+
 // ParseServer генерирует конфигурацию для инициализации сервера.
 func ParseServer() (*ServerConfig, error) {
 	var serverHost string
@@ -95,6 +105,9 @@ func ParseServer() (*ServerConfig, error) {
 	var jsonConfigFile string
 	flag.StringVar(&jsonConfigFile, "c", "", "absolute path for json config file")
 	flag.StringVar(&jsonConfigFile, "config", "", "path for json config file")
+
+	var trustedSubnet string
+	flag.StringVar(&trustedSubnet, "t", "192.168.1.0/24", "trusted subnet for server")
 
 	flag.Parse()
 
@@ -126,6 +139,10 @@ func ParseServer() (*ServerConfig, error) {
 		jsonConfigFile = envJSONConfigFile
 	}
 
+	if envTrustedSubnet := os.Getenv("TRUSTED_SUBNET"); envTrustedSubnet != "" {
+		trustedSubnet = envTrustedSubnet
+	}
+
 	if jsonConfigFile != "" {
 		jsonConfig, err := parseJSONConfig(jsonConfigFile)
 		if err != nil {
@@ -147,6 +164,9 @@ func ParseServer() (*ServerConfig, error) {
 		if !enableHTTPS && jsonConfig.EnableHTTPS {
 			enableHTTPS = jsonConfig.EnableHTTPS
 		}
+		if trustedSubnet == "" {
+			trustedSubnet = jsonConfig.TrustedSubnet
+		}
 	}
 
 	var builder serverConfigBuilder
@@ -156,7 +176,8 @@ func ParseServer() (*ServerConfig, error) {
 		WithFileStorage(fileStorage).
 		WithDSN(dsn).
 		WithLogLevel(logLevel).
-		WithHTTPS(enableHTTPS)
+		WithHTTPS(enableHTTPS).
+		WithTrustedSubnet(trustedSubnet)
 
 	return &builder.config, nil
 }

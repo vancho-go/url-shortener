@@ -10,6 +10,7 @@ import (
 	"github.com/vancho-go/url-shortener/internal/app/config"
 	"github.com/vancho-go/url-shortener/internal/app/handlers"
 	"github.com/vancho-go/url-shortener/internal/app/storage"
+	"github.com/vancho-go/url-shortener/internal/app/utils"
 	"github.com/vancho-go/url-shortener/pkg/logger"
 	"go.uber.org/zap"
 	"log"
@@ -67,6 +68,10 @@ func Run() error {
 			r.Post("/shorten/batch", logger.RequestLogger(compressMiddleware(handlers.EncodeBatch(dbInstance, configuration.BaseHost))))
 			r.Get("/user/urls", logger.RequestLogger(handlers.GetUserURLs(dbInstance, configuration.BaseHost)))
 			r.Delete("/user/urls", logger.RequestLogger(handlers.DeleteURLs(dbInstance)))
+		})
+		r.Group(func(r chi.Router) {
+			r.Use(utils.TrustedSubnetMiddleware(configuration.TrustedSubnet))
+			r.Get("/internal/stats", logger.RequestLogger(handlers.GetStats(dbInstance)))
 		})
 
 	})

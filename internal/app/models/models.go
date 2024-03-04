@@ -37,3 +37,9 @@ type DeleteURLRequest struct {
 	UserID     string
 	ShortenURL string
 }
+
+// APIStatsResponse содержит статистику по количеству сокращенных URL и пользователей.
+type APIStatsResponse struct {
+	URLs  int `json:"urls"`
+	Users int `json:"users"`
+}
