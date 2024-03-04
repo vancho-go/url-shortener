@@ -2,9 +2,19 @@
 package config
 
 import (
+	"encoding/json"
 	"flag"
 	"os"
 )
+
+// JSONConfig - cтруктура, соответствующая JSON файлу.
+type JSONConfig struct {
+	ServerAddress   string `json:"server_address"`
+	BaseURL         string `json:"base_url"`
+	FileStoragePath string `json:"file_storage_path"`
+	DatabaseDSN     string `json:"database_dsn"`
+	EnableHTTPS     bool   `json:"enable_https"`
+}
 
 // ServerConfig хранит параметры, необходимые для инициализации сервера.
 type ServerConfig struct {
@@ -16,8 +26,10 @@ type ServerConfig struct {
 	FileStorage string
 	// DBDSN - connection string для подключения к БД.
 	DBDSN string
-	// LogLevel - уровень логгирования для логгера.
+	// LogLevel - уровень логирования для логера.
 	LogLevel string
+	// EnableHTTPS - включение HTTPS в веб-сервере
+	EnableHTTPS bool
 }
 
 type serverConfigBuilder struct {
@@ -42,20 +54,26 @@ func (b *serverConfigBuilder) WithFileStorage(fileStorage string) *serverConfigB
 	return b
 }
 
-// WithDSN задает значение для DBDSN.
+// WithDSN задает значение для DB DSN.
 func (b *serverConfigBuilder) WithDSN(dsn string) *serverConfigBuilder {
 	b.config.DBDSN = dsn
 	return b
 }
 
-// WithDSN задает значение для DBDSN.
+// WithLogLevel задает значение для уровня логирования.
 func (b *serverConfigBuilder) WithLogLevel(level string) *serverConfigBuilder {
 	b.config.LogLevel = level
 	return b
 }
 
+// WithHTTPS задает значение для https.
+func (b *serverConfigBuilder) WithHTTPS(https bool) *serverConfigBuilder {
+	b.config.EnableHTTPS = https
+	return b
+}
+
 // ParseServer генерирует конфигурацию для инициализации сервера.
-func ParseServer() (ServerConfig, error) {
+func ParseServer() (*ServerConfig, error) {
 	var serverHost string
 	flag.StringVar(&serverHost, "a", "localhost:8080", "address and port to run server")
 
@@ -70,6 +88,13 @@ func ParseServer() (ServerConfig, error) {
 
 	var logLevel string
 	flag.StringVar(&logLevel, "l", "info", "logger level")
+
+	var enableHTTPS bool
+	flag.BoolVar(&enableHTTPS, "s", false, "enable HTTPs on server")
+
+	var jsonConfigFile string
+	flag.StringVar(&jsonConfigFile, "c", "", "absolute path for json config file")
+	flag.StringVar(&jsonConfigFile, "config", "", "path for json config file")
 
 	flag.Parse()
 
@@ -93,44 +118,62 @@ func ParseServer() (ServerConfig, error) {
 		logLevel = envLevel
 	}
 
+	if envEnableHTTPS := os.Getenv("ENABLE_HTTPS"); envEnableHTTPS == "1" {
+		enableHTTPS = true
+	}
+
+	if envJSONConfigFile := os.Getenv("CONFIG"); envJSONConfigFile != "" {
+		jsonConfigFile = envJSONConfigFile
+	}
+
+	if jsonConfigFile != "" {
+		jsonConfig, err := parseJSONConfig(jsonConfigFile)
+		if err != nil {
+			return nil, err
+		}
+
+		if serverHost == "" {
+			serverHost = jsonConfig.ServerAddress
+		}
+		if baseHost == "" {
+			baseHost = jsonConfig.BaseURL
+		}
+		if fileStorage == "" {
+			fileStorage = jsonConfig.FileStoragePath
+		}
+		if dsn == "" {
+			dsn = jsonConfig.DatabaseDSN
+		}
+		if !enableHTTPS && jsonConfig.EnableHTTPS {
+			enableHTTPS = jsonConfig.EnableHTTPS
+		}
+	}
+
 	var builder serverConfigBuilder
 
 	builder.WithServerHost(serverHost).
-		WithBaseHost(baseHost).WithFileStorage(fileStorage).WithDSN(dsn).WithLogLevel(logLevel)
+		WithBaseHost(baseHost).
+		WithFileStorage(fileStorage).
+		WithDSN(dsn).
+		WithLogLevel(logLevel).
+		WithHTTPS(enableHTTPS)
 
-	return builder.config, nil
+	return &builder.config, nil
 }
 
-// ClientConfig хранит параметры, необходимые для инициализации клиента.
-type ClientConfig struct {
-	// ClientHost - адрес и порт для клиента.
-	ClientHost string
-}
+// parseJSONConfig считывает конфигурацию из json файла
+func parseJSONConfig(configFile string) (*JSONConfig, error) {
+	file, err := os.Open(configFile)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
 
-type clientConfigBuilder struct {
-	config ClientConfig
-}
-
-// WithClientHost задает значение для ClientHost.
-func (b *clientConfigBuilder) WithClientHost(clientHost string) *clientConfigBuilder {
-	b.config.ClientHost = clientHost
-	return b
-}
-
-// ParseClient генерирует конфигурацию для инициализации клиента.
-func ParseClient() (ClientConfig, error) {
-	var clientHost string
-	flag.StringVar(&clientHost, "c", "http://localhost:8080", "address and port for client")
-
-	flag.Parse()
-
-	if envClientAddr := os.Getenv("CLIENT_ADDRESS"); envClientAddr != "" {
-		clientHost = envClientAddr
+	var config JSONConfig
+	decoder := json.NewDecoder(file)
+	if err = decoder.Decode(&config); err != nil {
+		return nil, err
 	}
 
-	var builder clientConfigBuilder
-
-	builder.WithClientHost(clientHost)
-
-	return builder.config, nil
+	return &config, nil
 }
