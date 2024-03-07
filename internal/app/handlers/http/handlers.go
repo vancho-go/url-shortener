@@ -1,5 +1,5 @@
 // Модуль handlers сожержит логику обработчиков.
-package handlers
+package http
 
 import (
 	"context"
