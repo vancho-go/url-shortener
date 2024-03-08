@@ -6,7 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/vancho-go/url-shortener/pkg/logger"
+	"github.com/vancho-go/url-shortener/internal/app/handlers/http/middlewares"
 	"sync"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -188,7 +188,7 @@ func (db *Database) DeleteUserURLs(ctx context.Context, urlsToDelete ...models.D
 
 	for err := range deleteResCh {
 		if err != nil {
-			logger.Log.Error("error deleting row", zap.Error(err))
+			middlewares.Log.Error("error deleting row", zap.Error(err))
 		}
 	}
 	return nil
@@ -322,7 +322,7 @@ func (db *Database) IsShortenUnique(ctx context.Context, shortenURL string) bool
 	selectQuery := "SELECT COUNT(*) FROM urls WHERE shorten_url=$1"
 	stmt, err := db.DB.Prepare(selectQuery)
 	if err != nil {
-		logger.Log.Error("error in preparing query for unique count")
+		middlewares.Log.Error("error in preparing query for unique count")
 		//TODO
 		return false
 	}
@@ -333,7 +333,7 @@ func (db *Database) IsShortenUnique(ctx context.Context, shortenURL string) bool
 	var count int
 	err = row.Scan(&count)
 	if err != nil {
-		logger.Log.Error("error in scanning count query")
+		middlewares.Log.Error("error in scanning count query")
 		//TODO
 		return false
 	}

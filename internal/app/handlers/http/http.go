@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/vancho-go/url-shortener/pkg/logger"
+	"github.com/vancho-go/url-shortener/internal/app/handlers/http/middlewares"
 	"io"
 	"math/rand"
 	"net/http"
@@ -16,7 +16,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 
-	"github.com/vancho-go/url-shortener/internal/app/auth"
 	"github.com/vancho-go/url-shortener/internal/app/base62"
 	"github.com/vancho-go/url-shortener/internal/app/models"
 	"github.com/vancho-go/url-shortener/internal/app/storage"
@@ -48,14 +47,14 @@ func EncodeURL(db storage.URLStorager, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := getCookie(req)
 		if err != nil {
-			logger.Log.Debug("no cookie in request, got from context")
+			middlewares.Log.Debug("no cookie in request, got from context")
 		}
 
 		var userID string
 		if cookie != nil {
-			userID, err = auth.GetUserID(cookie.Value)
+			userID, err = middlewares.GetUserID(cookie.Value)
 			if err != nil {
-				logger.Log.Warn("something wrong with user_id")
+				middlewares.Log.Warn("something wrong with user_id")
 			}
 		}
 
@@ -105,7 +104,7 @@ func EncodeURL(db storage.URLStorager, addr string) http.HandlerFunc {
 
 		_, err = res.Write([]byte(addr + "/" + shortenURL))
 		if err != nil {
-			logger.Log.Error("write failed", zap.Error(err))
+			middlewares.Log.Error("write failed", zap.Error(err))
 		}
 	}
 }
@@ -115,21 +114,21 @@ func EncodeURLJSON(db storage.URLStorager, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := getCookie(req)
 		if err != nil {
-			logger.Log.Debug("no cookie in request, got from context")
+			middlewares.Log.Debug("no cookie in request, got from context")
 		}
 
 		var userID string
 		if cookie != nil {
-			userID, err = auth.GetUserID(cookie.Value)
+			userID, err = middlewares.GetUserID(cookie.Value)
 			if err != nil {
-				logger.Log.Warn("something wrong with user_id")
+				middlewares.Log.Warn("something wrong with user_id")
 			}
 		}
 
 		var request models.APIShortenRequest
 		dec := json.NewDecoder(req.Body)
 		if err = dec.Decode(&request); err != nil {
-			logger.Log.Warn("can't decode request JSON body", zap.Error(err))
+			middlewares.Log.Warn("can't decode request JSON body", zap.Error(err))
 			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
 			return
 		}
@@ -181,7 +180,7 @@ func EncodeURLJSON(db storage.URLStorager, addr string) http.HandlerFunc {
 
 		enc := json.NewEncoder(res)
 		if err := enc.Encode(response); err != nil {
-			logger.Log.Error("error encoding response", zap.Error(err))
+			middlewares.Log.Error("error encoding response", zap.Error(err))
 			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
 			return
 		}
@@ -193,21 +192,21 @@ func EncodeBatch(db storage.URLStorager, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := getCookie(req)
 		if err != nil {
-			logger.Log.Debug("no cookie in request, got from context")
+			middlewares.Log.Debug("no cookie in request, got from context")
 		}
 
 		var userID string
 		if cookie != nil {
-			userID, err = auth.GetUserID(cookie.Value)
+			userID, err = middlewares.GetUserID(cookie.Value)
 			if err != nil {
-				logger.Log.Warn("something wrong with user_id")
+				middlewares.Log.Warn("something wrong with user_id")
 			}
 		}
 
 		var request []models.APIBatchRequest
 		dec := json.NewDecoder(req.Body)
 		if err := dec.Decode(&request); err != nil {
-			logger.Log.Warn("can't decode request JSON body", zap.Error(err))
+			middlewares.Log.Warn("can't decode request JSON body", zap.Error(err))
 			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
 			return
 		}
@@ -254,7 +253,7 @@ func EncodeBatch(db storage.URLStorager, addr string) http.HandlerFunc {
 		res.WriteHeader(http.StatusCreated)
 		enc := json.NewEncoder(res)
 		if err := enc.Encode(response); err != nil {
-			logger.Log.Error("error encoding response", zap.Error(err))
+			middlewares.Log.Error("error encoding response", zap.Error(err))
 			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
 			return
 		}
@@ -266,15 +265,15 @@ func GetUserURLs(db storage.UserStorager, addr string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := req.Cookie("AuthToken")
 		if err != nil {
-			logger.Log.Debug("error getting cookie", zap.Error(err))
+			middlewares.Log.Debug("error getting cookie", zap.Error(err))
 
 			// Replace it after tests repaired
 			http.Error(res, "No cookie presented", http.StatusUnauthorized)
 			return
 		}
-		userID, err := auth.GetUserID(cookie.Value)
+		userID, err := middlewares.GetUserID(cookie.Value)
 		if err != nil {
-			logger.Log.Warn("something wrong with user_id", zap.Error(err))
+			middlewares.Log.Warn("something wrong with user_id", zap.Error(err))
 			http.Error(res, "Bad user_id", http.StatusUnauthorized)
 			return
 		}
@@ -292,7 +291,7 @@ func GetUserURLs(db storage.UserStorager, addr string) http.HandlerFunc {
 		}
 
 		if err != nil {
-			logger.Log.Error("error getting user urls", zap.Error(err))
+			middlewares.Log.Error("error getting user urls", zap.Error(err))
 			http.Error(res, "Error getting urls", http.StatusBadRequest)
 			return
 		}
@@ -301,7 +300,7 @@ func GetUserURLs(db storage.UserStorager, addr string) http.HandlerFunc {
 		res.WriteHeader(http.StatusOK)
 		enc := json.NewEncoder(res)
 		if err := enc.Encode(userURLs); err != nil {
-			logger.Log.Error("error encoding response", zap.Error(err))
+			middlewares.Log.Error("error encoding response", zap.Error(err))
 			http.Error(res, "Error adding new shorten URL", http.StatusBadRequest)
 			return
 		}
@@ -313,15 +312,15 @@ func DeleteURLs(db storage.UserStorager) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		cookie, err := req.Cookie("AuthToken")
 		if err != nil {
-			logger.Log.Debug("error getting cookie", zap.Error(err))
+			middlewares.Log.Debug("error getting cookie", zap.Error(err))
 
 			// Replace it after tests repaired
 			http.Error(res, "No cookie presented", http.StatusNoContent)
 			return
 		}
-		userID, err := auth.GetUserID(cookie.Value)
+		userID, err := middlewares.GetUserID(cookie.Value)
 		if err != nil {
-			logger.Log.Warn("something wrong with user_id", zap.Error(err))
+			middlewares.Log.Warn("something wrong with user_id", zap.Error(err))
 			http.Error(res, "Bad user_id", http.StatusUnauthorized)
 			return
 		}
@@ -329,7 +328,7 @@ func DeleteURLs(db storage.UserStorager) http.HandlerFunc {
 		var shortenUrls []string
 		dec := json.NewDecoder(req.Body)
 		if err = dec.Decode(&shortenUrls); err != nil {
-			logger.Log.Warn("can't decode request JSON body", zap.Error(err))
+			middlewares.Log.Warn("can't decode request JSON body", zap.Error(err))
 			http.Error(res, "Error deleting shorten URLs", http.StatusBadRequest)
 			return
 		}
@@ -346,7 +345,7 @@ func DeleteURLs(db storage.UserStorager) http.HandlerFunc {
 
 		err = db.DeleteUserURLs(ctx, urlsToDelete...)
 		if err != nil {
-			logger.Log.Error("error deleting", zap.Error(err))
+			middlewares.Log.Error("error deleting", zap.Error(err))
 		}
 	}
 }
@@ -383,7 +382,7 @@ func GetStats(store storage.StatsStorager) http.HandlerFunc {
 		res.WriteHeader(http.StatusOK)
 		enc := json.NewEncoder(res)
 		if err := enc.Encode(response); err != nil {
-			logger.Log.Error("error encoding response", zap.Error(err))
+			middlewares.Log.Error("error encoding response", zap.Error(err))
 			http.Error(res, "Error getting stats", http.StatusBadRequest)
 			return
 		}
@@ -401,9 +400,9 @@ func getCookie(req *http.Request) (*http.Cookie, error) {
 	cookie, err := req.Cookie("AuthToken")
 
 	if cookie == nil {
-		cookie2, ok := req.Context().Value(auth.CookieKey).(*http.Cookie)
+		cookie2, ok := req.Context().Value(middlewares.CookieKey).(*http.Cookie)
 		if !ok {
-			logger.Log.Debug("error conversion cookie")
+			middlewares.Log.Debug("error conversion cookie")
 		} else {
 			cookie = cookie2
 		}

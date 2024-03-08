@@ -1,5 +1,5 @@
 // Модуль logger логирует информацию и реализует middleware-логгер для входящих HTTP-запросов.
-package logger
+package middlewares
 
 import (
 	"net/http"

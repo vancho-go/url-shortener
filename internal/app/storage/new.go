@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"github.com/vancho-go/url-shortener/internal/app/config"
+	"github.com/vancho-go/url-shortener/internal/app/handlers/http/middlewares"
 	"github.com/vancho-go/url-shortener/internal/app/models"
-	"github.com/vancho-go/url-shortener/pkg/logger"
 )
 
 // URLStorager реализует методы для работы с URL.
@@ -47,7 +47,7 @@ type Storager interface {
 func New(serverConfig config.ServerConfig) (Storager, error) {
 	switch {
 	case serverConfig.DBDSN != "":
-		logger.Log.Info("Initializing postgres storage")
+		middlewares.Log.Info("Initializing postgres storage")
 		db, err := Initialize(serverConfig.DBDSN)
 		if err != nil {
 			return nil, errors.New("error Postgres DB initializing")
@@ -55,7 +55,7 @@ func New(serverConfig config.ServerConfig) (Storager, error) {
 		return db, nil
 
 	case serverConfig.FileStorage != "":
-		logger.Log.Info("Initializing file storage")
+		middlewares.Log.Info("Initializing file storage")
 		dbInstance, err := NewEncoderDecoder(serverConfig.FileStorage)
 		if err != nil {
 			return nil, errors.New("error in FileStorage constructor")
@@ -68,7 +68,7 @@ func New(serverConfig config.ServerConfig) (Storager, error) {
 		return dbInstance, nil
 
 	default:
-		logger.Log.Info("Initializing in-memory storage")
+		middlewares.Log.Info("Initializing in-memory storage")
 		return MapDB{}, nil
 	}
 }
