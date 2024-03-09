@@ -37,6 +37,7 @@ func (s *URLShortenerServer) Ping(ctx context.Context, in *emptypb.Empty) (*empt
 	return nil, nil
 }
 
+// AddURL генерирует сокращенный URL для переданного оригинального URL.
 func (s *URLShortenerServer) AddURL(ctx context.Context, in *proto.AddURLRequest) (*proto.AddURLResponse, error) {
 	originalURL := in.OriginalUrl
 	userID := ctx.Value(interceptors.UserIDKey).(string)
@@ -77,6 +78,7 @@ func (s *URLShortenerServer) AddURL(ctx context.Context, in *proto.AddURLRequest
 	return &resp, nil
 }
 
+// AddURLs batch сокращенных URL для batch оригинальных URL.
 func (s *URLShortenerServer) AddURLs(ctx context.Context, in *proto.AddURLsRequest) (*proto.AddURLsResponse, error) {
 	userID := ctx.Value(interceptors.UserIDKey).(string)
 	if userID == "" {
@@ -127,6 +129,7 @@ func (s *URLShortenerServer) AddURLs(ctx context.Context, in *proto.AddURLsReque
 	return &response, nil
 }
 
+// GetURL генерирует сокращенный URL для переданного оригинального URL.
 func (s *URLShortenerServer) GetURL(ctx context.Context, in *proto.GetURLRequest) (*proto.GetURLResponse, error) {
 	shortenURL := in.ShortUrl
 	ctxWT, cancel := context.WithTimeout(ctx, 1*time.Second)
@@ -144,6 +147,7 @@ func (s *URLShortenerServer) GetURL(ctx context.Context, in *proto.GetURLRequest
 	return nil, status.Error(codes.NotFound, "url not found")
 }
 
+// GetUserURLs возвращает пользователю его ранее сокращенные URL.
 func (s *URLShortenerServer) GetUserURLs(ctx context.Context, in *emptypb.Empty) (*proto.GetUserURLsResponse, error) {
 	userID := ctx.Value(interceptors.UserIDKey).(string)
 	if userID == "" {
@@ -176,6 +180,7 @@ func (s *URLShortenerServer) GetUserURLs(ctx context.Context, in *emptypb.Empty)
 	return &resp, nil
 }
 
+// DeleteURLs удаляет URL пользователя.
 func (s *URLShortenerServer) DeleteURLs(ctx context.Context, in *proto.DeleteURLsRequest) (*emptypb.Empty, error) {
 	userID := ctx.Value(interceptors.UserIDKey).(string)
 	if userID == "" {
@@ -198,6 +203,8 @@ func (s *URLShortenerServer) DeleteURLs(ctx context.Context, in *proto.DeleteURL
 	}
 	return nil, nil
 }
+
+// GetStats возвращает статистику по хранилищу.
 func (s *URLShortenerServer) GetStats(ctx context.Context, in *emptypb.Empty) (*proto.GetStatsResponse, error) {
 	response, err := s.db.GetStats(ctx)
 	if err != nil {
