@@ -18,7 +18,6 @@ service URLShortener {
 
 message AddURLRequest {
   string original_url = 1;
-  string shorten_url = 2;
 }
 
 message AddURLResponse {

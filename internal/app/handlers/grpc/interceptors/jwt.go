@@ -14,9 +14,9 @@ import (
 
 type key int
 
-// CookieKey - параметр, необходимый для передачи токена через context.
+// UserIDKey - параметр, необходимый для передачи токена через context.
 const (
-	CookieKey key = iota
+	UserIDKey key = iota
 )
 
 // tokenExp - время действия сгенерированного токена (cookie).
@@ -72,7 +72,7 @@ func isTokenValid(tokenString string) bool {
 }
 
 // GetUserID извлекает userID из валидного токена.
-func GetUserID(tokenString string) (string, error) {
+func getUserID(tokenString string) (string, error) {
 	if !isTokenValid(tokenString) {
 		return "", fmt.Errorf("token is not valid")
 	}
@@ -97,6 +97,9 @@ func GetUserID(tokenString string) (string, error) {
 	return claims.UserID, nil
 }
 
+// JWTInterceptor выполняет роль interceptor, который проверяет наличие токена аутентификации.
+// Если токен присутствует и он валидный, interceptor передает запрос следующему обработчику.
+// Если токена нет, генерируется новый токен, который передается следующему обработчику через context.
 func JWTInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	var jwtToken string
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
@@ -110,7 +113,7 @@ func JWTInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, ha
 		userID := GenerateUserID()
 		newJWTToken, err := generateJWTToken(userID)
 		if err != nil {
-			return nil, status.Error(codes.Internal, "missing jwtToken")
+			return nil, status.Error(codes.Internal, "error generating jwtToken")
 		}
 		jwtToken = newJWTToken
 
@@ -120,7 +123,12 @@ func JWTInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, ha
 		grpc.SetHeader(ctx, md)
 	}
 
-	ctxWV := context.WithValue(ctx, CookieKey, jwtToken)
+	userID, err := getUserID(jwtToken)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "error getting data from jwtToken")
+	}
+
+	ctxWV := context.WithValue(ctx, UserIDKey, userID)
 	resp, err := handler(ctxWV, req)
 
 	return resp, err

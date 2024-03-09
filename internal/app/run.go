@@ -119,7 +119,7 @@ func Run() error {
 		grpc.ChainUnaryInterceptor(interceptors.UnaryServerInterceptor),
 	)
 	// регистрируем сервис
-	proto.RegisterURLShortenerServer(grpcSrv, grpc2.New())
+	proto.RegisterURLShortenerServer(grpcSrv, grpc2.New(dbInstance, configuration.BaseHost))
 
 	middlewares.Log.Info("Starting grpc server")
 	// получаем запрос gRPC
