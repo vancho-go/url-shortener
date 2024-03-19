@@ -75,9 +75,6 @@ func EncodeURL(db storage.URLStorager, addr string) http.HandlerFunc {
 			shortenURL = base62.Base62Encode(rand.Uint64())
 		}
 
-		ctx, cancel2 := context.WithTimeout(req.Context(), 1*time.Second)
-		defer cancel2()
-
 		err = db.AddURL(ctx, string(originalURL), shortenURL, userID)
 		if err != nil {
 			if !isUniqueViolationError(err) {
@@ -90,8 +87,7 @@ func EncodeURL(db storage.URLStorager, addr string) http.HandlerFunc {
 				http.Error(res, "Internal DB Error", http.StatusInternalServerError)
 				return
 			}
-			ctx, cancel3 := context.WithTimeout(req.Context(), 1*time.Second)
-			defer cancel3()
+
 			shortenURL, err = pg.GetShortenURLByOriginal(ctx, string(originalURL))
 			if err != nil {
 				http.Error(res, "Error getting shorten URL", http.StatusInternalServerError)
@@ -146,8 +142,6 @@ func EncodeURLJSON(db storage.URLStorager, addr string) http.HandlerFunc {
 			shortenURL = base62.Base62Encode(rand.Uint64())
 		}
 
-		ctx, cancel2 := context.WithTimeout(req.Context(), 1*time.Second)
-		defer cancel2()
 		err = db.AddURL(ctx, originalURL, shortenURL, userID)
 		if err != nil {
 			if !isUniqueViolationError(err) {
@@ -160,8 +154,6 @@ func EncodeURLJSON(db storage.URLStorager, addr string) http.HandlerFunc {
 				http.Error(res, "Internal DB Error", http.StatusInternalServerError)
 				return
 			}
-			ctx, cancel3 := context.WithTimeout(req.Context(), 1*time.Second)
-			defer cancel3()
 			shortenURL, err = pg.GetShortenURLByOriginal(ctx, originalURL)
 			if err != nil {
 				http.Error(res, "Error getting shorten URL", http.StatusInternalServerError)
@@ -215,6 +207,9 @@ func EncodeBatch(db storage.URLStorager, addr string) http.HandlerFunc {
 		var response []models.APIBatchResponse
 		const batchSize = 100
 
+		ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+		defer cancel()
+
 		for i, url := range request {
 			originalURL := url.OriginalURL
 			if originalURL == "" {
@@ -222,8 +217,6 @@ func EncodeBatch(db storage.URLStorager, addr string) http.HandlerFunc {
 			}
 
 			shortenURL := base62.Base62Encode(rand.Uint64())
-			ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
-			defer cancel()
 			for !db.IsShortenUnique(ctx, shortenURL) {
 				shortenURL = base62.Base62Encode(rand.Uint64())
 			}
@@ -235,8 +228,6 @@ func EncodeBatch(db storage.URLStorager, addr string) http.HandlerFunc {
 			})
 
 			if len(batch) == batchSize || i == len(request)-1 {
-				ctx, cancel := context.WithTimeout(req.Context(), 5*time.Second)
-				defer cancel()
 				err := db.AddURLs(ctx, userID, batch...)
 				if err != nil {
 					http.Error(res, "Error adding new shorten URLs", http.StatusBadRequest)

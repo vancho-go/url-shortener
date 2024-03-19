@@ -52,9 +52,6 @@ func (s *URLShortenerServer) AddURL(ctx context.Context, in *proto.AddURLRequest
 		shortenURL = base62.Base62Encode(rand.Uint64())
 	}
 
-	ctx, cancel2 := context.WithTimeout(ctx, 1*time.Second)
-	defer cancel2()
-
 	err := s.db.AddURL(ctx, originalURL, shortenURL, userID)
 	if err != nil {
 		if !isUniqueViolationError(err) {
@@ -65,9 +62,7 @@ func (s *URLShortenerServer) AddURL(ctx context.Context, in *proto.AddURLRequest
 		if !ok {
 			return nil, status.Error(codes.Internal, "internal DB error")
 		}
-		ctx, cancel3 := context.WithTimeout(ctx, 1*time.Second)
-		defer cancel3()
-		shortenURL, err = pg.GetShortenURLByOriginal(ctx, string(originalURL))
+		shortenURL, err = pg.GetShortenURLByOriginal(ctx, originalURL)
 		if err != nil {
 			return nil, status.Error(codes.Internal, "error getting shorten URL")
 		}
@@ -95,7 +90,7 @@ func (s *URLShortenerServer) AddURLs(ctx context.Context, in *proto.AddURLsReque
 			continue
 		}
 		shortenURL := base62.Base62Encode(rand.Uint64())
-		ctxWT, cancel := context.WithTimeout(ctx, 1*time.Second)
+		ctxWT, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 		for !s.db.IsShortenUnique(ctxWT, shortenURL) {
 			shortenURL = base62.Base62Encode(rand.Uint64())
@@ -108,9 +103,7 @@ func (s *URLShortenerServer) AddURLs(ctx context.Context, in *proto.AddURLsReque
 		})
 
 		if len(batch) == batchSize || i == len(in.IdAndUrl)-1 {
-			ctxWT2, cancel := context.WithTimeout(ctx, 5*time.Second)
-			defer cancel()
-			err := s.db.AddURLs(ctxWT2, userID, batch...)
+			err := s.db.AddURLs(ctxWT, userID, batch...)
 			if err != nil {
 				return nil, status.Error(codes.Internal, "something wrong")
 			}
