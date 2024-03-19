@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package url_shortener;
+
+option go_package = "github.com/vancho-go/url-shortener/pkg/proto";
+
+import "google/protobuf/empty.proto";
+
+service URLShortener {
+  rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+  rpc AddURL(AddURLRequest) returns (AddURLResponse) {}
+  rpc AddURLs(AddURLsRequest) returns (AddURLsResponse) {}
+  rpc GetURL(GetURLRequest) returns (GetURLResponse) {}
+  rpc GetUserURLs(google.protobuf.Empty) returns (GetUserURLsResponse) {}
+  rpc DeleteURLs(DeleteURLsRequest) returns (google.protobuf.Empty) {}
+  rpc GetStats(google.protobuf.Empty) returns (GetStatsResponse) {}
+}
+
+message AddURLRequest {
+  string original_url = 1;
+}
+
+message AddURLResponse {
+  string result = 1;
+}
+
+message AddURLsRequest {
+  message IDAndURL{
+    string correlation_id = 1;
+    string original_url = 2;
+  }
+  repeated IDAndURL id_and_url = 1;
+}
+
+message AddURLsResponse {
+  message Res {
+    string correlation_id = 1;
+    string short_url = 2;
+  }
+  repeated Res result = 1;
+}
+
+message GetURLRequest {
+  string short_url = 1;
+}
+
+message GetURLResponse {
+  string original_url = 1;
+}
+
+message GetUserURLsResponse {
+  message Res {
+      string short_url = 1;
+      string original_url = 2;
+  }
+  repeated Res result = 1;
+  string error = 2;
+}
+
+message DeleteURLsRequest {
+  repeated string urls = 1;
+}
+
+message GetStatsResponse {
+  string urls = 1;
+  string users = 2;
+}

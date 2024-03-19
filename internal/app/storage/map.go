@@ -46,6 +46,11 @@ func (storage MapDB) AddURLs(ctx context.Context, userID string, urls ...models.
 	return errors.New("method not implemented for this type of storage")
 }
 
+// GetStats извлекает статистику хранилища.
+func (storage MapDB) GetStats(ctx context.Context) (*models.APIStatsResponse, error) {
+	return nil, errors.New("method not implemented for this type of storage")
+}
+
 // Close закрывает хранилище.
 func (storage MapDB) Close() error {
 	return nil

@@ -1,5 +1,5 @@
 // Модуль compress выполняет функцию сжатия http.ResponseWriter в gzip.
-package compress
+package middlewares
 
 import (
 	"compress/gzip"

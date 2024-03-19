@@ -5,7 +5,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/vancho-go/url-shortener/pkg/logger"
+	"fmt"
+	"github.com/vancho-go/url-shortener/internal/app/handlers/http/middlewares"
 	"sync"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -187,7 +188,7 @@ func (db *Database) DeleteUserURLs(ctx context.Context, urlsToDelete ...models.D
 
 	for err := range deleteResCh {
 		if err != nil {
-			logger.Log.Error("error deleting row", zap.Error(err))
+			middlewares.Log.Error("error deleting row", zap.Error(err))
 		}
 	}
 	return nil
@@ -321,7 +322,7 @@ func (db *Database) IsShortenUnique(ctx context.Context, shortenURL string) bool
 	selectQuery := "SELECT COUNT(*) FROM urls WHERE shorten_url=$1"
 	stmt, err := db.DB.Prepare(selectQuery)
 	if err != nil {
-		logger.Log.Error("error in preparing query for unique count")
+		middlewares.Log.Error("error in preparing query for unique count")
 		//TODO
 		return false
 	}
@@ -332,11 +333,29 @@ func (db *Database) IsShortenUnique(ctx context.Context, shortenURL string) bool
 	var count int
 	err = row.Scan(&count)
 	if err != nil {
-		logger.Log.Error("error in scanning count query")
+		middlewares.Log.Error("error in scanning count query")
 		//TODO
 		return false
 	}
 	return count == 0
+}
+
+// GetStats извлекает статистику хранилища.
+func (db *Database) GetStats(ctx context.Context) (*models.APIStatsResponse, error) {
+	countURLsQuery := "SELECT COUNT(*) FROM urls WHERE deleted = false"
+	countURLs := db.DB.QueryRowContext(ctx, countURLsQuery)
+
+	countUsersQuery := "SELECT COUNT(DISTINCT user_id) FROM urls"
+	countUsers := db.DB.QueryRowContext(ctx, countUsersQuery)
+
+	var response models.APIStatsResponse
+	if err := countUsers.Scan(&response.Users); err != nil {
+		return nil, fmt.Errorf("getStats: error scanning row: %w", err)
+	}
+	if err := countURLs.Scan(&response.URLs); err != nil {
+		return nil, fmt.Errorf("getStats: error scanning row: %w", err)
+	}
+	return &response, nil
 }
 
 // Close закрывает хранилище.
